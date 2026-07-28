@@ -1,0 +1,13 @@
+export const AVAILABILITY_OPTIONS = ['Tempo inteiro', 'Meio período', 'Freelance', 'Temporário'];
+
+export const EDUCATION_LEVELS = [
+  'Sem escolaridade formal',
+  'Ensino primário',
+  'Ensino secundário',
+  'Técnico-profissional',
+  'Bacharelato',
+  'Licenciatura',
+  'Mestrado ou superior',
+];
+
+export const GENDER_OPTIONS = ['Feminino', 'Masculino', 'Outro'];
