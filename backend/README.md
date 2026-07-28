@@ -1,8 +1,10 @@
 # Emprego Já — Backend
 
 Node.js + Express API for the Emprego Já mobile app, backed by a persistent
-SQLite database (`better-sqlite3`). JWT auth, bcrypt password hashing, photo
-uploads served from disk, and real Expo push notifications.
+SQLite database (Node's built-in `node:sqlite`). JWT auth (bcryptjs password
+hashing), photo uploads served from disk, and real Expo push notifications.
+No native/C++ compiler is required to install this — every dependency is
+pure JavaScript or built into Node itself.
 
 No payment processing is implemented. Every route that will eventually cost
 money is marked with a `// TODO(payment): ...` comment describing the charge
@@ -10,8 +12,8 @@ that should be required there once M-Pesa/eMola/mKesh integration is added.
 
 ## Running locally
 
-Requirements: Node.js 18+ (native build tools — `python3`, `make`, `g++` —
-are needed the first time, to compile `better-sqlite3` and `bcrypt`).
+Requirements: Node.js 22.5+ (for the built-in `node:sqlite` module — check
+with `node --version`; no other native build tools are needed).
 
 ```bash
 cd backend
