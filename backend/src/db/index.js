@@ -1,15 +1,18 @@
 const path = require('node:path');
 const fs = require('node:fs');
-const Database = require('better-sqlite3');
+const { DatabaseSync } = require('node:sqlite');
 
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', '..', 'data');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
 const DB_PATH = process.env.DB_PATH || path.join(DATA_DIR, 'empregoja.sqlite3');
 
-const db = new Database(DB_PATH);
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
+// node:sqlite is built into Node.js (no native compiler needed on the host
+// machine, unlike better-sqlite3) and mirrors its synchronous prepare/run/
+// get/all API closely enough to be a drop-in replacement here.
+const db = new DatabaseSync(DB_PATH);
+db.exec('PRAGMA journal_mode = WAL');
+db.exec('PRAGMA foreign_keys = ON');
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS users (
