@@ -1,0 +1,57 @@
+{
+  "expo": {
+    "name": "Emprego Já",
+    "slug": "emprego-ja",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "scheme": "empregoja",
+    "platforms": ["ios", "android"],
+    "primaryColor": "#1B2A4A",
+    "backgroundColor": "#FFFFFF",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "mz.empregoja.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Precisamos de aceder à câmara para tirar a sua foto de perfil e fotos de stories.",
+        "NSPhotoLibraryUsageDescription": "Precisamos de aceder às suas fotos para escolher uma foto de perfil ou de story."
+      }
+    },
+    "android": {
+      "package": "mz.empregoja.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#1B2A4A",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "permissions": ["CAMERA", "READ_EXTERNAL_STORAGE", "READ_MEDIA_IMAGES"]
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Precisamos de aceder às suas fotos para escolher uma foto de perfil ou de story.",
+          "cameraPermission": "Precisamos de aceder à câmara para tirar a sua foto de perfil e fotos de stories."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#E0562F"
+        }
+      ]
+    ],
+    "notification": {
+      "icon": "./assets/icon.png",
+      "color": "#E0562F"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "REPLACE_WITH_EAS_PROJECT_ID"
+      }
+    }
+  }
+}

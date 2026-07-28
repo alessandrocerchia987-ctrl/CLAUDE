@@ -3,6 +3,7 @@ const db = require('../db');
 const { requireAuth } = require('../middleware/auth');
 const { upload, relativeUploadPath } = require('../middleware/upload');
 const { serializeUser } = require('../utils/serialize');
+const { notifyUser } = require('../utils/push');
 
 const router = express.Router();
 
@@ -86,6 +87,27 @@ router.post('/me/photo', requireAuth, upload.single('photo'), (req, res) => {
   db.prepare('UPDATE users SET photo_url = ? WHERE id = ?').run(relPath, req.user.id);
   const updated = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
   res.json({ user: serializeUser(updated, { includePhone: true }) });
+});
+
+// Minimal one-way in-app message: delivered as a notification to the
+// recipient (no threads/read-receipts — just enough to satisfy the
+// "in-app message" contact option alongside WhatsApp).
+router.post('/:id/message', requireAuth, async (req, res) => {
+  const { text } = req.body;
+  if (!text || !String(text).trim()) {
+    return res.status(400).json({ error: 'Escreva uma mensagem.' });
+  }
+  const target = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
+  if (!target) return res.status(404).json({ error: 'Utilizador não encontrado.' });
+
+  await notifyUser(target.id, {
+    type: 'direct_message',
+    title: `Mensagem de ${req.user.company_name || req.user.name}`,
+    body: String(text).trim(),
+    data: { fromUserId: req.user.id },
+  });
+
+  res.status(201).json({ ok: true });
 });
 
 // View another user's profile. Phone is only included if:
