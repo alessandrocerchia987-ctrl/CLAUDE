@@ -50,6 +50,15 @@ No code changes are needed to deploy — everything is env-var driven.
 
 ## Deploying (Render / Railway / a VPS)
 
+A `render.yaml` Blueprint is included at the repo root, so on Render you can
+skip the manual steps below: **New +** → **Blueprint** → select this repo →
+Render reads `render.yaml` and provisions the `empregoja-api` web service
+with a 1GB persistent disk, an auto-generated `JWT_SECRET`, and
+`PUBLIC_BASE_URL` already set to `https://empregoja-api.onrender.com`. If you
+rename the service, update `PUBLIC_BASE_URL` in `render.yaml` to match.
+
+Manual steps (Render without the Blueprint, Railway, or a VPS):
+
 1. Push this `backend/` folder as (or push the whole repo, using `backend`
    as the service root / working directory).
 2. Build command: `npm install`. Start command: `npm start`.
