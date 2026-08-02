@@ -52,6 +52,25 @@ export default function JobCard({ job, onPress }) {
           </View>
         ) : null}
 
+        {typeof job.daysRemaining === 'number' ? (
+          <View style={styles.metaRow}>
+            <Ionicons
+              name="time-outline"
+              size={12}
+              color={job.expired ? colors.danger : job.daysRemaining <= 3 ? colors.coral : colors.textMuted}
+            />
+            <Text
+              style={[
+                styles.metaText,
+                (job.expired || job.daysRemaining <= 3) && { color: colors.danger, fontWeight: '700' },
+              ]}
+              numberOfLines={1}
+            >
+              {job.expired ? 'Vaga expirada' : `Expira em ${job.daysRemaining} dia${job.daysRemaining === 1 ? '' : 's'}`}
+            </Text>
+          </View>
+        ) : null}
+
         {job.payText ? (
           <Text style={styles.pay} numberOfLines={1}>
             {job.payText}

@@ -61,7 +61,17 @@ function serializeUser(user, { includePhone = false } = {}) {
   };
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 function serializeJob(job, employer) {
+  let expired = false;
+  let daysRemaining = null;
+  if (job.expires_at) {
+    const msRemaining = Date.parse(`${job.expires_at.replace(' ', 'T')}Z`) - Date.now();
+    expired = msRemaining <= 0;
+    daysRemaining = Math.max(0, Math.ceil(msRemaining / DAY_MS));
+  }
+
   return {
     id: job.id,
     title: job.title,
@@ -75,6 +85,9 @@ function serializeJob(job, employer) {
     featured: !!job.featured,
     active: !!job.active,
     createdAt: job.created_at,
+    expiresAt: job.expires_at,
+    expired,
+    daysRemaining,
     employerId: job.employer_id,
     employer: employer
       ? {

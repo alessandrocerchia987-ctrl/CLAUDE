@@ -131,13 +131,20 @@ export default function JobDetailScreen({ route, navigation }) {
       </ScrollView>
 
       <View style={styles.footer}>
-        <Button
-          title={applied ? 'Candidatura enviada ✓' : 'Candidatar-me'}
-          onPress={handleApply}
-          loading={applying}
-          disabled={applied}
-          variant="coral"
-        />
+        {job.expired ? (
+          <View style={styles.expiredNotice}>
+            <Ionicons name="alert-circle-outline" size={16} color={colors.danger} />
+            <Text style={styles.expiredNoticeText}>Esta vaga já expirou e não aceita mais candidaturas.</Text>
+          </View>
+        ) : (
+          <Button
+            title={applied ? 'Candidatura enviada ✓' : 'Candidatar-me'}
+            onPress={handleApply}
+            loading={applying}
+            disabled={applied}
+            variant="coral"
+          />
+        )}
       </View>
     </View>
   );

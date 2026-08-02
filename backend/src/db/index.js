@@ -70,7 +70,8 @@ CREATE TABLE IF NOT EXISTS jobs (
   photo_url TEXT,
   featured INTEGER NOT NULL DEFAULT 0,
   active INTEGER NOT NULL DEFAULT 1,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  expires_at TEXT NOT NULL DEFAULT (datetime('now', '+30 days'))
 );
 
 CREATE TABLE IF NOT EXISTS applications (
@@ -118,11 +119,21 @@ CREATE TABLE IF NOT EXISTS job_reports (
 
 CREATE INDEX IF NOT EXISTS idx_jobs_employer ON jobs(employer_id);
 CREATE INDEX IF NOT EXISTS idx_jobs_active ON jobs(active);
+CREATE INDEX IF NOT EXISTS idx_jobs_expires ON jobs(expires_at);
 CREATE INDEX IF NOT EXISTS idx_applications_job ON applications(job_id);
 CREATE INDEX IF NOT EXISTS idx_applications_employee ON applications(employee_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_stories_expires ON stories(expires_at);
 CREATE INDEX IF NOT EXISTS idx_users_account_type ON users(account_type);
 `);
+
+// Migration for databases created before the 30-day job expiry feature:
+// add the column if missing, then backfill existing jobs.
+try {
+  db.exec('ALTER TABLE jobs ADD COLUMN expires_at TEXT');
+} catch {
+  // column already exists
+}
+db.exec("UPDATE jobs SET expires_at = datetime(created_at, '+30 days') WHERE expires_at IS NULL");
 
 module.exports = db;

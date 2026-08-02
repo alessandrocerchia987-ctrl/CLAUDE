@@ -9,7 +9,7 @@ import Button from '../../components/Button';
 import { api } from '../../api/client';
 import { pickImage } from '../../utils/pickImage';
 import { colors, radius, spacing } from '../../theme/colors';
-import { AVAILABILITY_OPTIONS } from '../../constants';
+import { AVAILABILITY_OPTIONS, JOB_LIFETIME_DAYS } from '../../constants';
 
 const initialForm = {
   title: '',
@@ -46,9 +46,11 @@ export default function PostJobScreen({ navigation }) {
       await api.postForm('/jobs', formData);
       setForm(initialForm);
       setPhoto(null);
-      Alert.alert('Vaga publicada', 'A sua vaga já está visível para os candidatos.', [
-        { text: 'OK', onPress: () => navigation.navigate('EmployerHome') },
-      ]);
+      Alert.alert(
+        'Vaga publicada',
+        `A sua vaga já está visível para os candidatos durante ${JOB_LIFETIME_DAYS} dias.`,
+        [{ text: 'OK', onPress: () => navigation.navigate('EmployerHome') }]
+      );
     } catch (err) {
       Alert.alert('Não foi possível publicar', err.message);
     } finally {
@@ -89,6 +91,15 @@ export default function PostJobScreen({ navigation }) {
           placeholder="O que procura num candidato?"
         />
 
+        <View style={styles.expiryNotice}>
+          <Ionicons name="time-outline" size={16} color={colors.teal} />
+          <Text style={styles.expiryNoticeText}>
+            Esta vaga fica visível durante {JOB_LIFETIME_DAYS} dias. Depois disso expira
+            automaticamente e deixa de aparecer para os candidatos — se ainda precisar de
+            contratar, terá de publicar novamente.
+          </Text>
+        </View>
+
         <Button title="Publicar vaga" variant="coral" onPress={handlePost} loading={posting} style={{ marginTop: spacing.md }} />
       </ScrollView>
     </KeyboardAvoidingView>
@@ -109,4 +120,20 @@ const styles = StyleSheet.create({
   photoPreview: { width: '100%', height: '100%' },
   photoPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.xs },
   photoPlaceholderText: { fontSize: 12, color: colors.textMuted },
+  expiryNotice: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    backgroundColor: colors.background,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    marginTop: spacing.lg,
+  },
+  expiryNoticeText: {
+    flex: 1,
+    fontSize: 12,
+    color: colors.textMuted,
+    lineHeight: 17,
+  },
 });

@@ -12,6 +12,9 @@ router.post('/', requireAuth, requireAccountType('employee'), async (req, res) =
   const { jobId } = req.body;
   const job = db.prepare('SELECT * FROM jobs WHERE id = ?').get(jobId);
   if (!job || !job.active) return res.status(404).json({ error: 'Vaga não encontrada.' });
+  if (job.expires_at && new Date(`${job.expires_at.replace(' ', 'T')}Z`) <= new Date()) {
+    return res.status(410).json({ error: 'Esta vaga já expirou.' });
+  }
 
   const existing = db
     .prepare('SELECT id FROM applications WHERE job_id = ? AND employee_id = ?')

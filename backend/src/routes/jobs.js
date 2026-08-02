@@ -42,9 +42,9 @@ router.post(
     db.prepare(
       `INSERT INTO jobs (
         id, employer_id, title, sector, location, pay_text, pay_amount,
-        availability, requirements, photo_url, featured
+        availability, requirements, photo_url, featured, expires_at
       ) VALUES (@id, @employerId, @title, @sector, @location, @payText, @payAmount,
-        @availability, @requirements, @photoUrl, @featured)`
+        @availability, @requirements, @photoUrl, @featured, datetime('now', '+30 days'))`
     ).run({
       id,
       employerId: req.user.id,
@@ -75,7 +75,7 @@ router.get('/mine', requireAuth, requireAccountType('employer'), (req, res) => {
 router.get('/', requireAuth, (req, res) => {
   const { q, profession, location, availability, minSalary, verifiedOnly } = req.query;
 
-  const clauses = ['jobs.active = 1'];
+  const clauses = ['jobs.active = 1', "jobs.expires_at > datetime('now')"];
   const params = {};
 
   if (q) {

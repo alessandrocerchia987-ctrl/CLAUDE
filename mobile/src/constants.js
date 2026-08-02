@@ -1,5 +1,7 @@
 export const AVAILABILITY_OPTIONS = ['Tempo inteiro', 'Meio período', 'Freelance', 'Temporário'];
 
+export const JOB_LIFETIME_DAYS = 30;
+
 export const EDUCATION_LEVELS = [
   'Sem escolaridade formal',
   'Ensino primário',
