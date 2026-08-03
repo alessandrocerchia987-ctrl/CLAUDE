@@ -1,5 +1,18 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Alert, TouchableOpacity, Linking, Modal, TextInput } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  ActivityIndicator,
+  Alert,
+  TouchableOpacity,
+  Linking,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenHeader from '../../components/ScreenHeader';
 import Avatar from '../../components/Avatar';
@@ -207,7 +220,10 @@ export default function CandidateDetailScreen({ route, navigation }) {
           if (payState === 'idle') setCheckoutOpen(false);
         }}
       >
-        <View style={styles.modalBackdrop}>
+        <KeyboardAvoidingView
+          style={styles.modalBackdrop}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
           <View style={styles.modalCard}>
             {payState === 'waiting' || payState === 'charging' ? (
               <View style={styles.waitingWrap}>
@@ -229,6 +245,8 @@ export default function CandidateDetailScreen({ route, navigation }) {
                   placeholder="Número M-Pesa ou e-Mola, ex: 841234567"
                   placeholderTextColor={colors.placeholder}
                   keyboardType="phone-pad"
+                  returnKeyType="done"
+                  onSubmitEditing={handleConfirmPayment}
                   style={styles.modalInput}
                 />
                 <View style={styles.modalActions}>
@@ -244,7 +262,7 @@ export default function CandidateDetailScreen({ route, navigation }) {
               </>
             )}
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       <Modal visible={messageOpen} transparent animationType="slide" onRequestClose={() => setMessageOpen(false)}>
