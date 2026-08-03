@@ -2,22 +2,10 @@ const express = require('express');
 const db = require('../db');
 const { newId } = require('../utils/ids');
 const { requireAuth } = require('../middleware/auth');
-const { createCharge, verifyWebhookSignature, listWallets } = require('../utils/zumbopay');
+const { createCharge, verifyWebhookSignature } = require('../utils/zumbopay');
 const { notifyUser } = require('../utils/push');
 
 const router = express.Router();
-
-// TEMPORARY debug route — open in a browser to see the real wallet_id
-// format ZumboPay's API returns. Remove once wallet IDs are confirmed
-// working.
-router.get('/debug/wallets', async (req, res) => {
-  try {
-    const result = await listWallets();
-    res.status(200).type('text/plain').send(JSON.stringify(result, null, 2));
-  } catch (err) {
-    res.status(500).type('text/plain').send(err.message);
-  }
-});
 
 // 50/80 MZN price list — kept server-side so the app can never send its
 // own amount.

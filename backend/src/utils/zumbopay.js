@@ -100,20 +100,4 @@ function verifyWebhookSignature(rawBody, signature) {
   }
 }
 
-// Debug helper — lets a browser check the real wallet_id format ZumboPay's
-// API actually expects, since the dashboard shows a friendlier reference
-// number rather than the underlying ID. Remove once the wallet IDs are
-// confirmed working end to end.
-async function listWallets() {
-  requireConfig();
-  const res = await fetch(`${BASE_URL}/wallets`, {
-    headers: {
-      Authorization: `Bearer ${process.env.ZUMBOPAY_API_KEY}`,
-      'X-Merchant-Id': process.env.ZUMBOPAY_MERCHANT_ID,
-    },
-  });
-  const text = await res.text();
-  return { status: res.status, body: text };
-}
-
-module.exports = { channelForMsisdn, createCharge, verifyWebhookSignature, listWallets };
+module.exports = { channelForMsisdn, createCharge, verifyWebhookSignature };
