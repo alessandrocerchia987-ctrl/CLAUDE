@@ -110,9 +110,27 @@ router.post('/:id/message', requireAuth, async (req, res) => {
   res.status(201).json({ ok: true });
 });
 
+// A worker who has applied to any of this employer's jobs is free to
+// contact — they initiated it. Paying to unlock only applies when the
+// employer reaches out to a worker who hasn't applied anywhere for them.
+function hasAppliedToEmployer(employeeId, employerId) {
+  const row = db
+    .prepare(
+      `SELECT 1 FROM applications
+       JOIN jobs ON jobs.id = applications.job_id
+       WHERE applications.employee_id = ? AND jobs.employer_id = ?
+       LIMIT 1`
+    )
+    .get(employeeId, employerId);
+  return !!row;
+}
+
 // View another user's profile. Phone is only included if:
 // - it's the viewer's own profile, or
-// - the viewer is an employer who has unlocked this employee's contact.
+// - the viewer is an employer who has unlocked this employee's contact
+//   (paid), or
+// - the viewer is an employer and this employee has applied to one of
+//   their jobs (free — the worker initiated contact).
 router.get('/:id', requireAuth, (req, res) => {
   const target = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
   if (!target) return res.status(404).json({ error: 'Utilizador não encontrado.' });
@@ -122,7 +140,7 @@ router.get('/:id', requireAuth, (req, res) => {
     const unlock = db
       .prepare('SELECT id FROM contact_unlocks WHERE employer_id = ? AND employee_id = ?')
       .get(req.user.id, target.id);
-    includePhone = !!unlock;
+    includePhone = !!unlock || hasAppliedToEmployer(target.id, req.user.id);
   }
 
   res.json({ user: serializeUser(target, { includePhone }) });
@@ -211,9 +229,24 @@ router.get('/', requireAuth, (req, res) => {
           .map((r) => r.employee_id)
       : []
   );
+  const appliedIds = new Set(
+    req.user.account_type === 'employer'
+      ? db
+          .prepare(
+            `SELECT DISTINCT applications.employee_id
+             FROM applications
+             JOIN jobs ON jobs.id = applications.job_id
+             WHERE jobs.employer_id = ?`
+          )
+          .all(req.user.id)
+          .map((r) => r.employee_id)
+      : []
+  );
 
   res.json({
-    candidates: rows.map((u) => serializeUser(u, { includePhone: unlockedIds.has(u.id) })),
+    candidates: rows.map((u) =>
+      serializeUser(u, { includePhone: unlockedIds.has(u.id) || appliedIds.has(u.id) })
+    ),
   });
 });
 

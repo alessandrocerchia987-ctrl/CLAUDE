@@ -86,17 +86,12 @@ router.get('/job/:jobId', requireAuth, requireAccountType('employer'), (req, res
     )
     .all(job.id);
 
-  const unlockedIds = new Set(
-    db
-      .prepare('SELECT employee_id FROM contact_unlocks WHERE employer_id = ?')
-      .all(req.user.id)
-      .map((r) => r.employee_id)
-  );
-
+  // Every row here is an applicant to one of this employer's own jobs, so
+  // contact is free — the worker initiated it by applying.
   const applicants = rows.map((row) => ({
     applicationId: row.application_id,
     appliedAt: row.applied_at,
-    candidate: serializeUser(row, { includePhone: unlockedIds.has(row.id) }),
+    candidate: serializeUser(row, { includePhone: true }),
   }));
 
   res.json({ applicants });
@@ -117,19 +112,13 @@ router.get('/received', requireAuth, requireAccountType('employer'), (req, res) 
     )
     .all(req.user.id);
 
-  const unlockedIds = new Set(
-    db
-      .prepare('SELECT employee_id FROM contact_unlocks WHERE employer_id = ?')
-      .all(req.user.id)
-      .map((r) => r.employee_id)
-  );
-
+  // Same as /job/:jobId — every row is an applicant, so contact is free.
   const applicants = rows.map((row) => ({
     applicationId: row.application_id,
     appliedAt: row.applied_at,
     jobId: row.job_id,
     jobTitle: row.job_title,
-    candidate: serializeUser(row, { includePhone: unlockedIds.has(row.id) }),
+    candidate: serializeUser(row, { includePhone: true }),
   }));
 
   res.json({ applicants });
