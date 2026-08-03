@@ -13,3 +13,11 @@ export const EDUCATION_LEVELS = [
 ];
 
 export const GENDER_OPTIONS = ['Feminino', 'Masculino', 'Outro'];
+
+export const SUPPORT_CATEGORIES = [
+  'Reportar utilizador',
+  'Comportamento inapropriado',
+  'Golpe ou conta falsa',
+  'Reclamação',
+  'Ajuda geral',
+];

@@ -87,6 +87,11 @@ export default function ProfileScreen({ navigation }) {
         <Field label="Telefone" value={user.phone} />
       </View>
 
+      <TouchableOpacity style={styles.supportBtn} onPress={() => navigation.navigate('Support')}>
+        <Ionicons name="help-buoy-outline" size={18} color={colors.teal} />
+        <Text style={styles.supportText}>Suporte / Ajuda</Text>
+      </TouchableOpacity>
+
       <TouchableOpacity style={styles.logoutBtn} onPress={confirmLogout}>
         <Ionicons name="log-out-outline" size={18} color={colors.danger} />
         <Text style={styles.logoutText}>Terminar sessão</Text>
@@ -128,12 +133,20 @@ const styles = StyleSheet.create({
   },
   fieldLabel: { fontSize: 11, color: colors.textMuted, textTransform: 'uppercase', fontWeight: '700' },
   fieldValue: { fontSize: 15, color: colors.text, marginTop: 4, lineHeight: 20 },
-  logoutBtn: {
+  supportBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.xs,
     marginTop: spacing.xl,
+    paddingVertical: spacing.md,
+  },
+  supportText: { color: colors.teal, fontWeight: '700', fontSize: 14 },
+  logoutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
     paddingVertical: spacing.md,
   },
   logoutText: { color: colors.danger, fontWeight: '700', fontSize: 14 },
