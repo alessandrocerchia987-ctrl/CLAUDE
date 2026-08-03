@@ -53,10 +53,12 @@ See `.env.example` for the full list:
 - `SUPPORT_EMAIL_TO` — optional, defaults to `alecerchia6@gmail.com`. Where
   support submissions are emailed.
 - `ZUMBOPAY_API_KEY` / `ZUMBOPAY_MERCHANT_ID` / `ZUMBOPAY_WALLET_MPESA` /
-  `ZUMBOPAY_WALLET_EMOLA` / `ZUMBOPAY_WEBHOOK_SECRET` — required for paid
-  actions (e.g. unlocking a contact) to work. Without these, the payment
-  request fails with a clear "not configured" error instead of the action
-  silently staying free. See below for where to find each value.
+  `ZUMBOPAY_WALLET_EMOLA` / `ZUMBOPAY_WALLET_CARD` / `ZUMBOPAY_WEBHOOK_SECRET`
+  — required for paid actions (e.g. unlocking a contact) to work. Without
+  these, the payment request fails with a clear "not configured" error
+  instead of the action silently staying free. `ZUMBOPAY_WALLET_CARD` is
+  only needed if you want Visa/Mastercard as a payment option — M-Pesa and
+  e-Mola work without it. See below for where to find each value.
 
 ### Setting up ZumboPay
 
@@ -64,26 +66,26 @@ See `.env.example` for the full list:
    (`zk_live_...` for production, `zk_test_...` for testing) and
    **Merchant ID** (`MCH_...`).
 2. In Panel → **Wallets**, make sure you have an active wallet for each
-   payment method you want to accept (M-Pesa and/or e-Mola). Note: the
-   6-digit "Wallet ID" shown in that panel is just a human-friendly
-   reference — the `wallet_id` the API actually needs is a UUID, only
-   returned by calling `GET /wallets` (there's a temporary debug route for
-   this — see below).
+   payment method you want to accept (M-Pesa, e-Mola, and/or Visa/Mastercard).
+   Note: the 6-digit "Wallet ID" shown in that panel is just a
+   human-friendly reference — the `wallet_id` the API actually needs is a
+   UUID, only returned by calling `GET /wallets`.
 3. Still in Panel → Developers, set the **webhook URL** to
    `https://<your-deployed-backend>/payments/webhook` (e.g.
    `https://empregoja-api.onrender.com/payments/webhook`) and enable at
    least the `payment.succeeded` and `payment.failed` events. ZumboPay then
    shows you a **webhook secret** — copy it.
-4. Set all five in `.env`:
+4. Set them all in `.env`:
    ```
    ZUMBOPAY_API_KEY=zk_live_...
    ZUMBOPAY_MERCHANT_ID=MCH_...
    ZUMBOPAY_WALLET_MPESA=...
    ZUMBOPAY_WALLET_EMOLA=...
+   ZUMBOPAY_WALLET_CARD=...
    ZUMBOPAY_WEBHOOK_SECRET=...
    ```
-5. Restart the backend. Unlocking a contact in the app should now trigger a
-   real M-Pesa/e-Mola payment prompt.
+5. Restart the backend. Unlocking a contact in the app should now offer
+   M-Pesa, e-Mola, and card as payment options.
 
 The current live wallet UUIDs (from `GET /wallets`, dashboard's Merchant ID
 `MCH_17E4ABC2CB`), for reference if reconfiguring:
@@ -92,13 +94,12 @@ The current live wallet UUIDs (from `GET /wallets`, dashboard's Merchant ID
 |---|---|---|
 | M-Pesa | `637348` | `5a4e574a-7f0a-45d7-aa42-214a478411cf` |
 | e-Mola | `825274` | `67f12f60-6b48-447a-8671-0b7b490f6db9` |
-| Card (Visa/Mastercard) | `151897` | `3a40a29c-6ac6-4a00-902e-6c62a1eaaac4` — **not wired up yet**; card payments need the separate hosted-checkout flow (`POST /payments`, not `POST /charges`), which isn't implemented. Use this UUID when that gets built. |
+| Card (Visa/Mastercard) | `151897` | `3a40a29c-6ac6-4a00-902e-6c62a1eaaac4` |
 
-There's a temporary debug route, `GET /payments/debug/wallets`, that
-proxies ZumboPay's own `GET /wallets` so this table can be refreshed from a
-browser without any API tooling — remove it (`backend/src/routes/payments.js`
-and the `listWallets` export in `backend/src/utils/zumbopay.js`) once no
-longer needed.
+M-Pesa/e-Mola use `POST /charges` (direct phone PIN push, no redirect).
+Card uses `POST /payments` (hosted checkout) since ZumboPay's STK push
+flow doesn't support cards — the app opens the returned `checkout_url` in
+an in-app browser instead of asking for a phone number.
 
 Only `unlock_contact` is wired to a real payment so far — posting a job,
 applying, posting a story, and boosting a job are still free (see the

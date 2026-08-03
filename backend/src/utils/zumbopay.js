@@ -85,6 +85,60 @@ async function createCharge({ amount, msisdn, customerName, sourceId }) {
   return body?.data;
 }
 
+// Creates a hosted-checkout payment (needed for cards — Visa/Mastercard
+// with 3-D Secure — which POST /charges' direct STK push doesn't support).
+// Returns { checkoutUrl, reference, ... } — the app opens checkoutUrl in a
+// browser for the customer to enter their card there; ZumboPay pushes the
+// result via the same webhook as STK charges.
+async function createHostedPayment({ amount, title, sourceId }) {
+  requireConfig();
+  const walletId = process.env.ZUMBOPAY_WALLET_CARD;
+  if (!walletId) {
+    throw new Error('A carteira de cartão (Visa/Mastercard) ainda não está configurada.');
+  }
+
+  const requestBody = {
+    wallet_id: walletId,
+    amount,
+    currency: 'MZN',
+    title,
+    source_id: sourceId,
+  };
+  console.log('[zumbopay] POST /payments request:', JSON.stringify(requestBody));
+
+  let res;
+  let rawText;
+  try {
+    res = await fetch(`${BASE_URL}/payments`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${process.env.ZUMBOPAY_API_KEY}`,
+        'X-Merchant-Id': process.env.ZUMBOPAY_MERCHANT_ID,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+    rawText = await res.text();
+  } catch (err) {
+    console.error('[zumbopay] fetch itself failed:', err);
+    throw new Error(`Falha de rede ao contactar o ZumboPay: ${err.message}`);
+  }
+
+  console.log(`[zumbopay] POST /payments response ${res.status}:`, rawText);
+
+  let body = null;
+  try {
+    body = JSON.parse(rawText);
+  } catch {
+    // non-JSON response — body stays null, handled below
+  }
+
+  if (!res.ok) {
+    throw new Error(body?.error?.message || rawText || `Pagamento recusado (${res.status}).`);
+  }
+  return body?.data;
+}
+
 // Verifies the `x-zumbopay-signature` header against the *raw* request
 // body — must be called with the unparsed bytes, not the parsed JSON,
 // since HMACs are computed over the exact bytes ZumboPay sent.
@@ -100,4 +154,4 @@ function verifyWebhookSignature(rawBody, signature) {
   }
 }
 
-module.exports = { channelForMsisdn, createCharge, verifyWebhookSignature };
+module.exports = { channelForMsisdn, createCharge, createHostedPayment, verifyWebhookSignature };

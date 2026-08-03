@@ -14,6 +14,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as WebBrowser from 'expo-web-browser';
 import ScreenHeader from '../../components/ScreenHeader';
 import Avatar from '../../components/Avatar';
 import VerifiedBadge from '../../components/VerifiedBadge';
@@ -27,6 +28,7 @@ const POLL_MAX_ATTEMPTS = 24; // ~60s
 const PAYMENT_METHODS = [
   { id: 'mpesa', label: 'M-Pesa', prefixes: ['84', '85'], dotColor: '#1E8A44' },
   { id: 'emola', label: 'e-Mola', prefixes: ['86', '87'], dotColor: colors.coral },
+  { id: 'card', label: 'Visa / Mastercard', dotColor: colors.navy },
 ];
 
 function methodMatchesPhone(method, phone) {
@@ -137,6 +139,58 @@ export default function CandidateDetailScreen({ route, navigation }) {
             Alert.alert(
               'A demorar mais que o esperado',
               'Ainda não recebemos a confirmação do pagamento. Se já aprovou no telemóvel, o contacto será desbloqueado automaticamente assim que a confirmação chegar.'
+            );
+          }
+        } catch {
+          // transient network error — keep polling until max attempts
+        }
+      }, POLL_INTERVAL_MS);
+    } catch (err) {
+      setPayState('idle');
+      Alert.alert('Não foi possível iniciar o pagamento', err.message);
+    }
+  }
+
+  async function handleCardPayment() {
+    setPayState('charging');
+    try {
+      const { paymentId, status, checkoutUrl } = await api.post('/payments/charge', {
+        purpose: 'unlock_contact',
+        method: 'card',
+        payload: { employeeId: candidateId },
+      });
+
+      if (status === 'success') {
+        await finishUnlock();
+        return;
+      }
+      if (!checkoutUrl) {
+        throw new Error('Não foi possível obter o link de pagamento.');
+      }
+
+      setPayState('waiting');
+      await WebBrowser.openBrowserAsync(checkoutUrl);
+
+      // The browser closing doesn't mean payment succeeded (user may have
+      // just backed out) — keep polling until the webhook confirms either way.
+      let attempts = 0;
+      pollTimer.current = setInterval(async () => {
+        attempts += 1;
+        try {
+          const { status: current } = await api.get(`/payments/${paymentId}`);
+          if (current === 'success') {
+            stopPolling();
+            await finishUnlock();
+          } else if (current === 'failed') {
+            stopPolling();
+            setPayState('idle');
+            Alert.alert('Pagamento não confirmado', 'O pagamento falhou ou foi cancelado. Tente novamente.');
+          } else if (attempts >= POLL_MAX_ATTEMPTS) {
+            stopPolling();
+            setPayState('idle');
+            Alert.alert(
+              'A demorar mais que o esperado',
+              'Ainda não recebemos a confirmação do pagamento. Se já concluiu o pagamento, o contacto será desbloqueado automaticamente assim que a confirmação chegar.'
             );
           }
         } catch {
@@ -261,7 +315,9 @@ export default function CandidateDetailScreen({ route, navigation }) {
                   {payState === 'charging' ? 'A iniciar pagamento...' : 'A aguardar confirmação'}
                 </Text>
                 <Text style={styles.waitingSub}>
-                  Aprove o pedido de pagamento que apareceu no seu telemóvel.
+                  {unlockMethod?.id === 'card'
+                    ? 'Conclua o pagamento na página que abriu.'
+                    : 'Aprove o pedido de pagamento que apareceu no seu telemóvel.'}
                 </Text>
               </View>
             ) : checkoutStep === 'method' ? (
@@ -274,7 +330,11 @@ export default function CandidateDetailScreen({ route, navigation }) {
                     style={styles.methodRow}
                     onPress={() => {
                       setUnlockMethod(method);
-                      setCheckoutStep('phone');
+                      if (method.id === 'card') {
+                        handleCardPayment();
+                      } else {
+                        setCheckoutStep('phone');
+                      }
                     }}
                   >
                     <View style={[styles.methodDot, { backgroundColor: method.dotColor }]} />

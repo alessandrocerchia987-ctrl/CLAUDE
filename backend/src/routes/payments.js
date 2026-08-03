@@ -2,7 +2,7 @@ const express = require('express');
 const db = require('../db');
 const { newId } = require('../utils/ids');
 const { requireAuth } = require('../middleware/auth');
-const { createCharge, verifyWebhookSignature } = require('../utils/zumbopay');
+const { createCharge, createHostedPayment, verifyWebhookSignature } = require('../utils/zumbopay');
 const { notifyUser } = require('../utils/push');
 
 const router = express.Router();
@@ -11,6 +11,11 @@ const router = express.Router();
 // own amount.
 const AMOUNTS = {
   unlock_contact: 50,
+};
+
+// Shown on ZumboPay's hosted checkout page for card payments.
+const TITLES = {
+  unlock_contact: 'Desbloquear contacto — Emprego Já',
 };
 
 // Runs the actual gated action once a payment is confirmed. Each purpose
@@ -45,14 +50,18 @@ async function completePayment(payment) {
   }
 }
 
-// Starts a direct M-Pesa/e-Mola STK push for one of the paid actions.
-// Nothing is created yet — the actual action only happens once the
-// webhook confirms the charge succeeded (see POST /webhook below).
+// Starts a payment for one of the paid actions — either a direct
+// M-Pesa/e-Mola STK push (method 'mpesa'/'emola', needs a phone number) or
+// a card checkout link (method 'card', opened in a browser). Nothing is
+// created yet — the actual action only happens once the webhook confirms
+// the payment succeeded (see POST /webhook below).
 router.post('/charge', requireAuth, async (req, res) => {
-  const { purpose, phone, payload } = req.body;
+  const { purpose, method, phone, payload } = req.body;
   const amount = AMOUNTS[purpose];
   if (!amount) return res.status(400).json({ error: 'Finalidade de pagamento inválida.' });
-  if (!phone || !String(phone).trim()) {
+
+  const isCard = method === 'card';
+  if (!isCard && (!phone || !String(phone).trim())) {
     return res.status(400).json({ error: 'Número de telefone é obrigatório.' });
   }
 
@@ -71,9 +80,21 @@ router.post('/charge', requireAuth, async (req, res) => {
     'INSERT INTO payments (id, user_id, purpose, amount, payload) VALUES (?, ?, ?, ?, ?)'
   ).run(id, req.user.id, purpose, amount, JSON.stringify(payload || {}));
 
-  const msisdn = `258${String(phone).replace(/\D/g, '').slice(-9)}`;
-
   try {
+    if (isCard) {
+      const payment = await createHostedPayment({
+        amount,
+        title: TITLES[purpose] || 'Pagamento — Emprego Já',
+        sourceId: id,
+      });
+      db.prepare(
+        'UPDATE payments SET provider_reference = ?, updated_at = datetime(\'now\') WHERE id = ?'
+      ).run(payment?.reference || null, id);
+
+      return res.status(201).json({ paymentId: id, status: 'pending', checkoutUrl: payment?.checkout_url });
+    }
+
+    const msisdn = `258${String(phone).replace(/\D/g, '').slice(-9)}`;
     const charge = await createCharge({
       amount,
       msisdn,
