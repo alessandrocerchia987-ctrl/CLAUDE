@@ -43,25 +43,44 @@ async function createCharge({ amount, msisdn, customerName, sourceId }) {
     );
   }
 
-  const res = await fetch(`${BASE_URL}/charges`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${process.env.ZUMBOPAY_API_KEY}`,
-      'X-Merchant-Id': process.env.ZUMBOPAY_MERCHANT_ID,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      wallet_id: walletId,
-      amount,
-      msisdn,
-      customer_name: customerName,
-      source_id: sourceId,
-    }),
-  });
+  const requestBody = {
+    wallet_id: walletId,
+    amount,
+    msisdn,
+    customer_name: customerName,
+    source_id: sourceId,
+  };
+  console.log('[zumbopay] POST /charges request:', JSON.stringify(requestBody));
 
-  const body = await res.json().catch(() => null);
+  let res;
+  let rawText;
+  try {
+    res = await fetch(`${BASE_URL}/charges`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${process.env.ZUMBOPAY_API_KEY}`,
+        'X-Merchant-Id': process.env.ZUMBOPAY_MERCHANT_ID,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+    rawText = await res.text();
+  } catch (err) {
+    console.error('[zumbopay] fetch itself failed:', err);
+    throw new Error(`Falha de rede ao contactar o ZumboPay: ${err.message}`);
+  }
+
+  console.log(`[zumbopay] POST /charges response ${res.status}:`, rawText);
+
+  let body = null;
+  try {
+    body = JSON.parse(rawText);
+  } catch {
+    // non-JSON response — body stays null, handled below
+  }
+
   if (!res.ok && res.status !== 202) {
-    throw new Error(body?.error?.message || `Pagamento recusado (${res.status}).`);
+    throw new Error(body?.error?.message || rawText || `Pagamento recusado (${res.status}).`);
   }
   return body?.data;
 }
