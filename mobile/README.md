@@ -5,10 +5,11 @@ marketplace connecting job seekers ("Candidatos") and employers
 ("Empregadores") in Mozambique. iOS and Android only — there is no web
 build target.
 
-No payment processing is implemented yet. Posting a job, applying to a job,
-unlocking a candidate's contact, and posting a Story all work for free right
-now; search the backend for `TODO(payment)` to see every spot that will need
-a confirmed M-Pesa/eMola/mKesh charge later.
+Payments are handled via ZumboPay (M-Pesa, e-Mola, and card). Posting a job
+(100 MZN, +50 MZN optional boost to sort above other jobs), applying to a job
+(50 MZN), and unlocking a candidate's contact (50 MZN) all require a
+confirmed payment — see `backend/src/routes/payments.js`. Posting a Story
+remains free.
 
 ## Running locally (Expo Go)
 
@@ -59,33 +60,50 @@ devices, not simulators.
 For push to work in a standalone/EAS build, set a real `extra.eas.projectId`
 in `app.json` (create the project with `eas init` — see below).
 
-## Producing an EAS preview build
+## Producing a real installable app (EAS Build)
 
-Install the EAS CLI and log in once:
+Everything above runs the app through Expo Go — useful for development, but
+not a real installable app. EAS Build compiles an actual `.apk` (Android) or
+`.ipa` (iOS) file. This is a one-time setup, then a build any time you want a
+fresh installable version. No app-store account or fee is required just to
+produce and install a `preview` build — that's only needed for actually
+publishing to the Play Store / App Store later.
 
-```bash
-npm install -g eas-cli
-eas login
-```
+Steps (Command Prompt on Windows, from the `mobile` folder):
 
-Link this project to an EAS project (only needed once — this fills in
-`extra.eas.projectId` in `app.json`):
+1. **Create a free Expo account** at [expo.dev](https://expo.dev) (Sign Up).
+2. **Log in from the terminal:**
+   ```
+   npx eas login
+   ```
+   Enter the email/password from step 1.
+3. **Link this project to your account** (only needed once ever — it fills
+   in `extra.eas.projectId` in `app.json`):
+   ```
+   npx eas init
+   ```
+   Confirm with `y`. Save the project ID it prints — if you ever start from
+   a fresh download of this repo, that ID needs to be in `app.json` (either
+   re-run `eas init`, or paste the ID back in).
+4. **Build:**
+   ```
+   npx eas build --platform android --profile preview
+   ```
+   Takes ~10-15 minutes (runs on Expo's servers, not your PC). The `preview`
+   profile already points at the live backend
+   (`https://empregoja-api.onrender.com`, set in `eas.json`) and produces a
+   directly-installable `.apk` — no store submission needed.
+   Add `--platform ios` for an iOS build (needs an Apple Developer account
+   to sign, unlike Android).
+5. **Install on a phone:** open the link/QR code EAS gives you when the
+   build finishes, download the `.apk`, and install it (Android will warn
+   about "install from unknown sources" — allow it for this file). This is
+   the real, standalone app — icon and all, not the Expo Go preview.
 
-```bash
-eas init
-```
-
-Update `eas.json`'s `preview` (and `production`) profile with your deployed
-backend's public URL in `EXPO_PUBLIC_API_URL`, then build:
-
-```bash
-eas build --profile preview --platform android
-eas build --profile preview --platform ios
-```
-
-The `preview` profile builds an internally-distributable Android APK (and an
-ad-hoc/internal iOS build) you can install directly for testing, without
-needing to submit to the App Store / Play Store first.
+When you're ready to actually launch publicly, switch to the `production`
+build profile and submit it through the Play Console / App Store Connect —
+that's the step that needs the $25 Google Play / $99-per-year Apple
+developer accounts.
 
 ## Project structure
 
