@@ -1,9 +1,9 @@
-const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || 'http://localhost:4000';
+const { getBaseUrl } = require('./requestContext');
 
 function absoluteUrl(relativeOrAbsolute) {
   if (!relativeOrAbsolute) return null;
   if (/^https?:\/\//i.test(relativeOrAbsolute)) return relativeOrAbsolute;
-  return `${PUBLIC_BASE_URL}${relativeOrAbsolute}`;
+  return `${getBaseUrl()}${relativeOrAbsolute}`;
 }
 
 function parseListField(value) {

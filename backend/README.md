@@ -43,8 +43,35 @@ See `.env.example` for the full list:
 - `DATA_DIR` — where the SQLite file and `/uploads` photos are persisted.
   On Render/Railway, point this at a mounted persistent disk so uploads and
   the database survive deploys.
-- `PUBLIC_BASE_URL` — the backend's own public URL, used to build absolute
-  photo URLs (e.g. `https://empregoja-api.onrender.com`) returned to the app.
+- `PUBLIC_BASE_URL` — optional. The server auto-detects the correct base URL
+  for absolute photo URLs from each request's own Host header (so it works
+  automatically whether you're hitting it via `localhost`, a LAN IP, or the
+  public Render domain). Only set this to force a specific value.
+- `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` — optional; used to
+  email Customer Support / report submissions. Without these, submissions
+  are still saved to the database but no email is sent (a warning is logged).
+- `SUPPORT_EMAIL_TO` — optional, defaults to `alecerchia6@gmail.com`. Where
+  support submissions are emailed.
+
+### Setting up support-ticket email with Gmail (no new account needed)
+
+1. Go to your Google Account → **Security** → turn on **2-Step Verification**
+   if it isn't already on.
+2. Go to https://myaccount.google.com/apppasswords, sign in, create an app
+   password (any name, e.g. "Emprego Já"). Google shows a 16-character code
+   — copy it.
+3. In `.env`, set:
+   ```
+   SMTP_HOST=smtp.gmail.com
+   SMTP_PORT=465
+   SMTP_USER=your-gmail-address@gmail.com
+   SMTP_PASS=the-16-character-app-password
+   ```
+4. Restart the backend. Submitting a Customer Support report in the app
+   should now arrive by email.
+
+Any other SMTP provider works the same way — just point `SMTP_HOST` /
+`SMTP_PORT` at it instead of Gmail's.
 
 No code changes are needed to deploy — everything is env-var driven.
 
@@ -64,8 +91,8 @@ Manual steps (Render without the Blueprint, Railway, or a VPS):
 2. Build command: `npm install`. Start command: `npm start`.
 3. Attach a persistent disk and set `DATA_DIR` to a path on it (e.g.
    `/var/data`), otherwise uploaded photos and the DB are lost on redeploy.
-4. Set `JWT_SECRET` (random secret) and `PUBLIC_BASE_URL` (the service's
-   public HTTPS URL) as environment variables.
+4. Set `JWT_SECRET` (random secret) as an environment variable.
+   `PUBLIC_BASE_URL` is optional (see above) and doesn't need to be set.
 5. Point the mobile app's `EXPO_PUBLIC_API_URL` at that same public URL.
 
 ## API overview

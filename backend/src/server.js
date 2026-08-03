@@ -3,6 +3,7 @@ const path = require('node:path');
 const fs = require('node:fs');
 const express = require('express');
 const cors = require('cors');
+const { withRequestContext } = require('./utils/requestContext');
 
 if (!process.env.JWT_SECRET) {
   console.error('JWT_SECRET is not set. Copy .env.example to .env and set a real secret.');
@@ -18,10 +19,13 @@ const applicationRoutes = require('./routes/applications');
 const unlockRoutes = require('./routes/unlocks');
 const notificationRoutes = require('./routes/notifications');
 const storyRoutes = require('./routes/stories');
+const supportRoutes = require('./routes/support');
 
 const app = express();
+app.set('trust proxy', true);
 app.use(cors());
 app.use(express.json({ limit: '5mb' }));
+app.use(withRequestContext);
 
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
 const UPLOAD_DIR = path.join(DATA_DIR, 'uploads');
@@ -37,6 +41,7 @@ app.use('/applications', applicationRoutes);
 app.use('/unlocks', unlockRoutes);
 app.use('/notifications', notificationRoutes);
 app.use('/stories', storyRoutes);
+app.use('/support', supportRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ error: 'Rota não encontrada.' });
