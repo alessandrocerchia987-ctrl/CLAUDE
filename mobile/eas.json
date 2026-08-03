@@ -18,14 +18,14 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://REPLACE-WITH-YOUR-DEPLOYED-BACKEND-URL"
+        "EXPO_PUBLIC_API_URL": "https://empregoja-api.onrender.com"
       }
     },
     "production": {
       "channel": "production",
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://REPLACE-WITH-YOUR-DEPLOYED-BACKEND-URL"
+        "EXPO_PUBLIC_API_URL": "https://empregoja-api.onrender.com"
       }
     }
   },
