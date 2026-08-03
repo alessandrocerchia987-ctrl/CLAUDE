@@ -21,6 +21,7 @@ const notificationRoutes = require('./routes/notifications');
 const storyRoutes = require('./routes/stories');
 const supportRoutes = require('./routes/support');
 const paymentRoutes = require('./routes/payments');
+const { startStoryCleanupSchedule } = require('./utils/cleanupStories');
 
 const app = express();
 app.set('trust proxy', true);
@@ -61,4 +62,5 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`Emprego Já backend a correr na porta ${PORT}`);
+  startStoryCleanupSchedule();
 });
