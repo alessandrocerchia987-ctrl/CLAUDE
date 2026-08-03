@@ -24,6 +24,17 @@ import { colors, radius, spacing } from '../../theme/colors';
 const POLL_INTERVAL_MS = 2500;
 const POLL_MAX_ATTEMPTS = 24; // ~60s
 
+const PAYMENT_METHODS = [
+  { id: 'mpesa', label: 'M-Pesa', prefixes: ['84', '85'], dotColor: '#1E8A44' },
+  { id: 'emola', label: 'e-Mola', prefixes: ['86', '87'], dotColor: colors.coral },
+];
+
+function methodMatchesPhone(method, phone) {
+  const digits = String(phone).replace(/\D/g, '');
+  const local = digits.startsWith('258') ? digits.slice(3) : digits;
+  return method.prefixes.includes(local.slice(0, 2));
+}
+
 function Field({ label, value }) {
   if (value === null || value === undefined || value === '') return null;
   return (
@@ -43,9 +54,18 @@ export default function CandidateDetailScreen({ route, navigation }) {
   const [sendingMessage, setSendingMessage] = useState(false);
 
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [checkoutStep, setCheckoutStep] = useState('method'); // method | phone
+  const [unlockMethod, setUnlockMethod] = useState(null);
   const [unlockPhone, setUnlockPhone] = useState('');
   const [payState, setPayState] = useState('idle'); // idle | charging | waiting | done
   const pollTimer = useRef(null);
+
+  function openCheckout() {
+    setCheckoutStep('method');
+    setUnlockMethod(null);
+    setUnlockPhone('');
+    setCheckoutOpen(true);
+  }
 
   async function load() {
     try {
@@ -76,6 +96,13 @@ export default function CandidateDetailScreen({ route, navigation }) {
   async function handleConfirmPayment() {
     if (!unlockPhone.trim()) {
       Alert.alert('Número em falta', 'Introduza o número de telemóvel a usar para o pagamento.');
+      return;
+    }
+    if (!methodMatchesPhone(unlockMethod, unlockPhone)) {
+      Alert.alert(
+        'Número não corresponde',
+        `Este número não parece ser um número ${unlockMethod.label}. Verifique o número ou escolha outro método.`
+      );
       return;
     }
     setPayState('charging');
@@ -127,6 +154,8 @@ export default function CandidateDetailScreen({ route, navigation }) {
     await load();
     setCheckoutOpen(false);
     setPayState('idle');
+    setCheckoutStep('method');
+    setUnlockMethod(null);
     setUnlockPhone('');
     Alert.alert('Contacto desbloqueado', 'Já pode ver o contacto deste candidato.');
   }
@@ -180,7 +209,7 @@ export default function CandidateDetailScreen({ route, navigation }) {
                   <Ionicons name="lock-closed" size={16} color={colors.textMuted} />
                   <Text style={styles.lockedText}>+258 •• ••• •••</Text>
                 </View>
-                <Button title="Desbloquear contacto — 50 MZN" variant="coral" onPress={() => setCheckoutOpen(true)} />
+                <Button title="Desbloquear contacto — 50 MZN" variant="coral" onPress={openCheckout} />
               </>
             ) : (
               <>
@@ -235,18 +264,51 @@ export default function CandidateDetailScreen({ route, navigation }) {
                   Aprove o pedido de pagamento que apareceu no seu telemóvel.
                 </Text>
               </View>
+            ) : checkoutStep === 'method' ? (
+              <>
+                <Text style={styles.modalTitle}>Como quer pagar?</Text>
+                <Text style={styles.amount}>50 MZN</Text>
+                {PAYMENT_METHODS.map((method) => (
+                  <TouchableOpacity
+                    key={method.id}
+                    style={styles.methodRow}
+                    onPress={() => {
+                      setUnlockMethod(method);
+                      setCheckoutStep('phone');
+                    }}
+                  >
+                    <View style={[styles.methodDot, { backgroundColor: method.dotColor }]} />
+                    <Text style={styles.methodLabel}>{method.label}</Text>
+                    <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+                  </TouchableOpacity>
+                ))}
+                <Button
+                  title="Cancelar"
+                  variant="ghost"
+                  onPress={() => setCheckoutOpen(false)}
+                  style={{ marginTop: spacing.sm }}
+                />
+              </>
             ) : (
               <>
-                <Text style={styles.modalTitle}>Desbloquear contacto</Text>
+                <TouchableOpacity style={styles.backRow} onPress={() => setCheckoutStep('method')}>
+                  <Ionicons name="chevron-back" size={18} color={colors.textMuted} />
+                  <Text style={styles.backText}>Mudar método</Text>
+                </TouchableOpacity>
+                <View style={styles.modalTitleRow}>
+                  <View style={[styles.methodDot, { backgroundColor: unlockMethod.dotColor }]} />
+                  <Text style={styles.modalTitle}>{unlockMethod.label}</Text>
+                </View>
                 <Text style={styles.amount}>50 MZN</Text>
                 <TextInput
                   value={unlockPhone}
                   onChangeText={setUnlockPhone}
-                  placeholder="Número M-Pesa ou e-Mola, ex: 841234567"
+                  placeholder={`Número ${unlockMethod.label}, ex: ${unlockMethod.prefixes[0]}1234567`}
                   placeholderTextColor={colors.placeholder}
                   keyboardType="phone-pad"
                   returnKeyType="done"
                   onSubmitEditing={handleConfirmPayment}
+                  autoFocus
                   style={styles.modalInput}
                 />
                 <View style={styles.modalActions}>
@@ -258,7 +320,7 @@ export default function CandidateDetailScreen({ route, navigation }) {
                   />
                   <Button title="Confirmar pagamento" onPress={handleConfirmPayment} style={{ flex: 1 }} />
                 </View>
-                <Text style={styles.finePrint}>Processado por ZumboPay via M-Pesa ou e-Mola.</Text>
+                <Text style={styles.finePrint}>Processado por ZumboPay.</Text>
               </>
             )}
           </View>
@@ -318,7 +380,23 @@ const styles = StyleSheet.create({
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   modalCard: { backgroundColor: colors.white, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, padding: spacing.lg },
   modalTitle: { fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: spacing.xs },
+  modalTitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginBottom: spacing.xs },
   amount: { fontSize: 26, fontWeight: '800', color: colors.navy, marginBottom: spacing.md },
+  methodRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  methodDot: { width: 14, height: 14, borderRadius: 999 },
+  methodLabel: { flex: 1, fontSize: 15, fontWeight: '700', color: colors.text },
+  backRow: { flexDirection: 'row', alignItems: 'center', gap: 2, marginBottom: spacing.md },
+  backText: { fontSize: 13, color: colors.textMuted, fontWeight: '600' },
   modalInput: {
     borderWidth: 1,
     borderColor: colors.border,
