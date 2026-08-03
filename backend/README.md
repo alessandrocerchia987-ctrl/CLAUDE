@@ -52,6 +52,40 @@ See `.env.example` for the full list:
   are still saved to the database but no email is sent (a warning is logged).
 - `SUPPORT_EMAIL_TO` — optional, defaults to `alecerchia6@gmail.com`. Where
   support submissions are emailed.
+- `ZUMBOPAY_API_KEY` / `ZUMBOPAY_MERCHANT_ID` / `ZUMBOPAY_WALLET_MPESA` /
+  `ZUMBOPAY_WALLET_EMOLA` / `ZUMBOPAY_WEBHOOK_SECRET` — required for paid
+  actions (e.g. unlocking a contact) to work. Without these, the payment
+  request fails with a clear "not configured" error instead of the action
+  silently staying free. See below for where to find each value.
+
+### Setting up ZumboPay
+
+1. In the ZumboPay Panel → **Developers**, copy your **API Key**
+   (`zk_live_...` for production, `zk_test_...` for testing) and
+   **Merchant ID** (`MCH_...`).
+2. In Panel → **Wallets**, make sure you have an active wallet for each
+   payment method you want to accept (M-Pesa and/or e-Mola), then call
+   `GET /wallets` (or check the panel) to get each wallet's ID (a UUID).
+3. Still in Panel → Developers, set the **webhook URL** to
+   `https://<your-deployed-backend>/payments/webhook` (e.g.
+   `https://empregoja-api.onrender.com/payments/webhook`) and enable at
+   least the `payment.succeeded` and `payment.failed` events. ZumboPay then
+   shows you a **webhook secret** — copy it.
+4. Set all five in `.env`:
+   ```
+   ZUMBOPAY_API_KEY=zk_live_...
+   ZUMBOPAY_MERCHANT_ID=MCH_...
+   ZUMBOPAY_WALLET_MPESA=...
+   ZUMBOPAY_WALLET_EMOLA=...
+   ZUMBOPAY_WEBHOOK_SECRET=...
+   ```
+5. Restart the backend. Unlocking a contact in the app should now trigger a
+   real M-Pesa/e-Mola payment prompt.
+
+Only `unlock_contact` is wired to a real payment so far — posting a job,
+applying, posting a story, and boosting a job are still free (see the
+`TODO(payment)` comments in their route files), following the exact same
+pattern once you're ready to wire them up too.
 
 ### Setting up support-ticket email with Gmail (no new account needed)
 

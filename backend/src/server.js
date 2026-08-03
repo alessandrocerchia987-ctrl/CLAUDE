@@ -20,11 +20,15 @@ const unlockRoutes = require('./routes/unlocks');
 const notificationRoutes = require('./routes/notifications');
 const storyRoutes = require('./routes/stories');
 const supportRoutes = require('./routes/support');
+const paymentRoutes = require('./routes/payments');
 
 const app = express();
 app.set('trust proxy', true);
 app.use(cors());
-app.use(express.json({ limit: '5mb' }));
+// `verify` stashes the exact raw bytes on req.rawBody — needed to check
+// ZumboPay's webhook signature, which is computed over the raw body, not
+// the parsed object.
+app.use(express.json({ limit: '5mb', verify: (req, res, buf) => { req.rawBody = buf; } }));
 app.use(withRequestContext);
 
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
@@ -42,6 +46,7 @@ app.use('/unlocks', unlockRoutes);
 app.use('/notifications', notificationRoutes);
 app.use('/stories', storyRoutes);
 app.use('/support', supportRoutes);
+app.use('/payments', paymentRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ error: 'Rota não encontrada.' });
