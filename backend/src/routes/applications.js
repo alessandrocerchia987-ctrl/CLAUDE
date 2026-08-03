@@ -1,44 +1,13 @@
 const express = require('express');
 const db = require('../db');
-const { newId } = require('../utils/ids');
 const { requireAuth, requireAccountType } = require('../middleware/auth');
 const { serializeJob, serializeUser } = require('../utils/serialize');
-const { notifyUser } = require('../utils/push');
 
 const router = express.Router();
 
-// TODO(payment): require a confirmed 50 MZN M-Pesa/eMola/mKesh charge before this insert.
-router.post('/', requireAuth, requireAccountType('employee'), async (req, res) => {
-  const { jobId } = req.body;
-  const job = db.prepare('SELECT * FROM jobs WHERE id = ?').get(jobId);
-  if (!job || !job.active) return res.status(404).json({ error: 'Vaga não encontrada.' });
-  if (job.expires_at && new Date(`${job.expires_at.replace(' ', 'T')}Z`) <= new Date()) {
-    return res.status(410).json({ error: 'Esta vaga já expirou.' });
-  }
-
-  const existing = db
-    .prepare('SELECT id FROM applications WHERE job_id = ? AND employee_id = ?')
-    .get(job.id, req.user.id);
-  if (existing) {
-    return res.status(409).json({ error: 'Já se candidatou a esta vaga.' });
-  }
-
-  const id = newId('app');
-  db.prepare('INSERT INTO applications (id, job_id, employee_id) VALUES (?, ?, ?)').run(
-    id,
-    job.id,
-    req.user.id
-  );
-
-  await notifyUser(job.employer_id, {
-    type: 'new_application',
-    title: 'Nova candidatura recebida',
-    body: `${req.user.name} candidatou-se à vaga "${job.title}".`,
-    data: { jobId: job.id, applicationId: id, employeeId: req.user.id },
-  });
-
-  res.status(201).json({ applicationId: id });
-});
+// Applying now goes through POST /payments/charge (purpose: 'apply', 50
+// MZN) so it's gated behind a confirmed payment — see
+// backend/src/routes/payments.js.
 
 router.get('/mine', requireAuth, requireAccountType('employee'), (req, res) => {
   const rows = db

@@ -2,68 +2,17 @@ const express = require('express');
 const db = require('../db');
 const { newId } = require('../utils/ids');
 const { requireAuth, requireAccountType } = require('../middleware/auth');
-const { upload, relativeUploadPath } = require('../middleware/upload');
 const { serializeJob } = require('../utils/serialize');
 
 const router = express.Router();
 
-function parsePayAmount(payText, payAmount) {
-  if (payAmount !== undefined && payAmount !== null && payAmount !== '') {
-    const n = Number(payAmount);
-    return Number.isFinite(n) ? n : null;
-  }
-  if (!payText) return null;
-  const digits = String(payText).replace(/[^\d]/g, '');
-  return digits ? Number(digits) : null;
-}
+// Posting a job now goes through POST /payments/charge (purpose:
+// 'post_job', 100 MZN + an optional 50 MZN boost add-on) so it's gated
+// behind a confirmed payment — see backend/src/routes/payments.js.
 
 function getEmployer(job) {
   return db.prepare('SELECT * FROM users WHERE id = ?').get(job.employer_id);
 }
-
-// TODO(payment): require a confirmed 50 MZN M-Pesa/eMola/mKesh charge before this insert.
-router.post(
-  '/',
-  requireAuth,
-  requireAccountType('employer'),
-  upload.single('photo'),
-  (req, res) => {
-    const { title, sector, location, payText, payAmount, availability, requirements, featured } =
-      req.body;
-
-    if (!title || !String(title).trim()) {
-      return res.status(400).json({ error: 'O título da vaga é obrigatório.' });
-    }
-    if (!sector || !String(sector).trim()) {
-      return res.status(400).json({ error: 'O sector/profissão é obrigatório.' });
-    }
-
-    const id = newId('job');
-    db.prepare(
-      `INSERT INTO jobs (
-        id, employer_id, title, sector, location, pay_text, pay_amount,
-        availability, requirements, photo_url, featured, expires_at
-      ) VALUES (@id, @employerId, @title, @sector, @location, @payText, @payAmount,
-        @availability, @requirements, @photoUrl, @featured, datetime('now', '+30 days'))`
-    ).run({
-      id,
-      employerId: req.user.id,
-      title: String(title).trim(),
-      sector: String(sector).trim(),
-      location: location || null,
-      payText: payText || null,
-      payAmount: parsePayAmount(payText, payAmount),
-      availability: availability || null,
-      requirements: requirements || null,
-      photoUrl: req.file ? relativeUploadPath(req.file.filename) : null,
-      // TODO(payment): featured/boosted currently free — require a confirmed charge later.
-      featured: featured === 'true' || featured === true ? 1 : 0,
-    });
-
-    const job = db.prepare('SELECT * FROM jobs WHERE id = ?').get(id);
-    res.status(201).json({ job: serializeJob(job, req.user) });
-  }
-);
 
 router.get('/mine', requireAuth, requireAccountType('employer'), (req, res) => {
   const rows = db

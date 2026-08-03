@@ -2,21 +2,36 @@ const express = require('express');
 const db = require('../db');
 const { newId } = require('../utils/ids');
 const { requireAuth } = require('../middleware/auth');
+const { upload, relativeUploadPath } = require('../middleware/upload');
 const { createCharge, createHostedPayment, verifyWebhookSignature } = require('../utils/zumbopay');
 const { notifyUser } = require('../utils/push');
 
 const router = express.Router();
 
-// 50/80 MZN price list — kept server-side so the app can never send its
-// own amount.
+// Price list — kept server-side so the app can never send its own amount.
 const AMOUNTS = {
   unlock_contact: 50,
+  apply: 50,
 };
+const JOB_POST_BASE = 100;
+const JOB_BOOST_ADDON = 50;
 
 // Shown on ZumboPay's hosted checkout page for card payments.
 const TITLES = {
   unlock_contact: 'Desbloquear contacto — Emprego Já',
+  post_job: 'Publicar vaga — Emprego Já',
+  apply: 'Candidatura — Emprego Já',
 };
+
+function parsePayAmount(payText, payAmount) {
+  if (payAmount !== undefined && payAmount !== null && payAmount !== '') {
+    const n = Number(payAmount);
+    return Number.isFinite(n) ? n : null;
+  }
+  if (!payText) return null;
+  const digits = String(payText).replace(/[^\d]/g, '');
+  return digits ? Number(digits) : null;
+}
 
 // Runs the actual gated action once a payment is confirmed. Each purpose
 // gets its own case; add new ones here as more actions get wired to
@@ -47,6 +62,58 @@ async function completePayment(payment) {
         data: { employerId: payment.user_id },
       });
     }
+    return;
+  }
+
+  if (payment.purpose === 'apply') {
+    const { jobId } = payload;
+    const job = db.prepare('SELECT * FROM jobs WHERE id = ?').get(jobId);
+    if (!job) return;
+
+    const existing = db
+      .prepare('SELECT id FROM applications WHERE job_id = ? AND employee_id = ?')
+      .get(jobId, payment.user_id);
+    if (!existing) {
+      const id = newId('app');
+      db.prepare('INSERT INTO applications (id, job_id, employee_id) VALUES (?, ?, ?)').run(
+        id,
+        jobId,
+        payment.user_id
+      );
+      const applicant = db.prepare('SELECT * FROM users WHERE id = ?').get(payment.user_id);
+      await notifyUser(job.employer_id, {
+        type: 'new_application',
+        title: 'Nova candidatura recebida',
+        body: `${applicant?.name} candidatou-se à vaga "${job.title}".`,
+        data: { jobId: job.id, applicationId: id, employeeId: payment.user_id },
+      });
+    }
+    return;
+  }
+
+  if (payment.purpose === 'post_job') {
+    const { title, sector, location, payText, payAmount, availability, requirements, photoPath, boost } =
+      payload;
+    const id = newId('job');
+    db.prepare(
+      `INSERT INTO jobs (
+        id, employer_id, title, sector, location, pay_text, pay_amount,
+        availability, requirements, photo_url, featured, expires_at
+      ) VALUES (@id, @employerId, @title, @sector, @location, @payText, @payAmount,
+        @availability, @requirements, @photoUrl, @featured, datetime('now', '+30 days'))`
+    ).run({
+      id,
+      employerId: payment.user_id,
+      title: String(title).trim(),
+      sector: String(sector).trim(),
+      location: location || null,
+      payText: payText || null,
+      payAmount: parsePayAmount(payText, payAmount),
+      availability: availability || null,
+      requirements: requirements || null,
+      photoUrl: photoPath || null,
+      featured: boost ? 1 : 0,
+    });
   }
 }
 
@@ -55,10 +122,29 @@ async function completePayment(payment) {
 // a card checkout link (method 'card', opened in a browser). Nothing is
 // created yet — the actual action only happens once the webhook confirms
 // the payment succeeded (see POST /webhook below).
-router.post('/charge', requireAuth, async (req, res) => {
-  const { purpose, method, phone, payload } = req.body;
-  const amount = AMOUNTS[purpose];
-  if (!amount) return res.status(400).json({ error: 'Finalidade de pagamento inválida.' });
+// post_job takes an optional photo, so this route accepts multipart form
+// data for it (multer no-ops for plain JSON requests from the other
+// purposes, so both work fine through the same route).
+router.post('/charge', requireAuth, upload.single('photo'), async (req, res) => {
+  const { purpose, method, phone } = req.body;
+  let payload = req.body.payload;
+  if (typeof payload === 'string') {
+    try {
+      payload = JSON.parse(payload);
+    } catch {
+      payload = {};
+    }
+  }
+  payload = payload || {};
+
+  let amount;
+  if (purpose === 'unlock_contact' || purpose === 'apply') {
+    amount = AMOUNTS[purpose];
+  } else if (purpose === 'post_job') {
+    amount = JOB_POST_BASE + (payload.boost ? JOB_BOOST_ADDON : 0);
+  } else {
+    return res.status(400).json({ error: 'Finalidade de pagamento inválida.' });
+  }
 
   const isCard = method === 'card';
   if (!isCard && (!phone || !String(phone).trim())) {
@@ -69,16 +155,51 @@ router.post('/charge', requireAuth, async (req, res) => {
     if (req.user.account_type !== 'employer') {
       return res.status(403).json({ error: 'Ação não permitida para este tipo de conta.' });
     }
-    const employee = db.prepare('SELECT id, account_type FROM users WHERE id = ?').get(payload?.employeeId);
+    const employee = db.prepare('SELECT id, account_type FROM users WHERE id = ?').get(payload.employeeId);
     if (!employee || employee.account_type !== 'employee') {
       return res.status(404).json({ error: 'Candidato não encontrado.' });
     }
   }
 
+  if (purpose === 'post_job') {
+    if (req.user.account_type !== 'employer') {
+      return res.status(403).json({ error: 'Ação não permitida para este tipo de conta.' });
+    }
+    if (!payload.title || !String(payload.title).trim()) {
+      return res.status(400).json({ error: 'O título da vaga é obrigatório.' });
+    }
+    if (!payload.sector || !String(payload.sector).trim()) {
+      return res.status(400).json({ error: 'O sector/profissão é obrigatório.' });
+    }
+  }
+
+  if (purpose === 'apply') {
+    if (req.user.account_type !== 'employee') {
+      return res.status(403).json({ error: 'Ação não permitida para este tipo de conta.' });
+    }
+    const job = db.prepare('SELECT * FROM jobs WHERE id = ?').get(payload.jobId);
+    if (!job || !job.active) {
+      return res.status(404).json({ error: 'Vaga não encontrada.' });
+    }
+    if (job.expires_at && new Date(`${job.expires_at.replace(' ', 'T')}Z`) <= new Date()) {
+      return res.status(410).json({ error: 'Esta vaga já expirou.' });
+    }
+    const existingApplication = db
+      .prepare('SELECT id FROM applications WHERE job_id = ? AND employee_id = ?')
+      .get(payload.jobId, req.user.id);
+    if (existingApplication) {
+      return res.status(409).json({ error: 'Já se candidatou a esta vaga.' });
+    }
+  }
+
+  if (req.file) {
+    payload.photoPath = relativeUploadPath(req.file.filename);
+  }
+
   const id = newId('pay');
   db.prepare(
     'INSERT INTO payments (id, user_id, purpose, amount, payload) VALUES (?, ?, ?, ?, ?)'
-  ).run(id, req.user.id, purpose, amount, JSON.stringify(payload || {}));
+  ).run(id, req.user.id, purpose, amount, JSON.stringify(payload));
 
   try {
     if (isCard) {
