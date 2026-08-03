@@ -64,8 +64,11 @@ See `.env.example` for the full list:
    (`zk_live_...` for production, `zk_test_...` for testing) and
    **Merchant ID** (`MCH_...`).
 2. In Panel → **Wallets**, make sure you have an active wallet for each
-   payment method you want to accept (M-Pesa and/or e-Mola), then call
-   `GET /wallets` (or check the panel) to get each wallet's ID (a UUID).
+   payment method you want to accept (M-Pesa and/or e-Mola). Note: the
+   6-digit "Wallet ID" shown in that panel is just a human-friendly
+   reference — the `wallet_id` the API actually needs is a UUID, only
+   returned by calling `GET /wallets` (there's a temporary debug route for
+   this — see below).
 3. Still in Panel → Developers, set the **webhook URL** to
    `https://<your-deployed-backend>/payments/webhook` (e.g.
    `https://empregoja-api.onrender.com/payments/webhook`) and enable at
@@ -81,6 +84,21 @@ See `.env.example` for the full list:
    ```
 5. Restart the backend. Unlocking a contact in the app should now trigger a
    real M-Pesa/e-Mola payment prompt.
+
+The current live wallet UUIDs (from `GET /wallets`, dashboard's Merchant ID
+`MCH_17E4ABC2CB`), for reference if reconfiguring:
+
+| Method | wallet_code (dashboard) | wallet_id (API) |
+|---|---|---|
+| M-Pesa | `637348` | `5a4e574a-7f0a-45d7-aa42-214a478411cf` |
+| e-Mola | `825274` | `67f12f60-6b48-447a-8671-0b7b490f6db9` |
+| Card (Visa/Mastercard) | `151897` | `3a40a29c-6ac6-4a00-902e-6c62a1eaaac4` — **not wired up yet**; card payments need the separate hosted-checkout flow (`POST /payments`, not `POST /charges`), which isn't implemented. Use this UUID when that gets built. |
+
+There's a temporary debug route, `GET /payments/debug/wallets`, that
+proxies ZumboPay's own `GET /wallets` so this table can be refreshed from a
+browser without any API tooling — remove it (`backend/src/routes/payments.js`
+and the `listWallets` export in `backend/src/utils/zumbopay.js`) once no
+longer needed.
 
 Only `unlock_contact` is wired to a real payment so far — posting a job,
 applying, posting a story, and boosting a job are still free (see the
