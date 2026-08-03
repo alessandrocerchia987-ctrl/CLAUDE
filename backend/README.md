@@ -80,17 +80,27 @@ No code changes are needed to deploy — everything is env-var driven.
 A `render.yaml` Blueprint is included at the repo root, so on Render you can
 skip the manual steps below: **New +** → **Blueprint** → select this repo →
 Render reads `render.yaml` and provisions the `empregoja-api` web service
-with a 1GB persistent disk, an auto-generated `JWT_SECRET`, and
-`PUBLIC_BASE_URL` already set to `https://empregoja-api.onrender.com`. If you
-rename the service, update `PUBLIC_BASE_URL` in `render.yaml` to match.
+with an auto-generated `JWT_SECRET` and `PUBLIC_BASE_URL` already set to
+`https://empregoja-api.onrender.com`. If you rename the service, update
+`PUBLIC_BASE_URL` in `render.yaml` to match.
+
+**Free tier note:** Render's free plan doesn't support persistent disks, so
+`render.yaml` doesn't attach one — the SQLite database and uploaded photos
+live on the service's regular filesystem, which is wiped whenever the
+service redeploys or restarts (including Render's automatic spin-down after
+15 minutes of no traffic on the free plan). That's fine for testing/demoing
+the app; when you're ready for real users and data that has to survive
+restarts, upgrade the service to a paid Render plan and add a disk back (see
+the manual steps below), or move to a proper hosted database.
 
 Manual steps (Render without the Blueprint, Railway, or a VPS):
 
 1. Push this `backend/` folder as (or push the whole repo, using `backend`
    as the service root / working directory).
 2. Build command: `npm install`. Start command: `npm start`.
-3. Attach a persistent disk and set `DATA_DIR` to a path on it (e.g.
-   `/var/data`), otherwise uploaded photos and the DB are lost on redeploy.
+3. (Paid plans only) Attach a persistent disk and set `DATA_DIR` to a path
+   on it (e.g. `/var/data`), otherwise uploaded photos and the DB are lost
+   on every redeploy/restart — see the free tier note above.
 4. Set `JWT_SECRET` (random secret) as an environment variable.
    `PUBLIC_BASE_URL` is optional (see above) and doesn't need to be set.
 5. Point the mobile app's `EXPO_PUBLIC_API_URL` at that same public URL.
