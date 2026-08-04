@@ -10,6 +10,7 @@ const ICONS = {
   new_application: 'document-text-outline',
   contact_unlocked: 'lock-open-outline',
   direct_message: 'chatbubble-outline',
+  job_expiring_soon: 'time-outline',
 };
 
 function timeAgo(iso) {

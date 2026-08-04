@@ -71,7 +71,8 @@ CREATE TABLE IF NOT EXISTS jobs (
   featured INTEGER NOT NULL DEFAULT 0,
   active INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  expires_at TEXT NOT NULL DEFAULT (datetime('now', '+30 days'))
+  expires_at TEXT NOT NULL DEFAULT (datetime('now', '+30 days')),
+  expiry_warning_sent INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS applications (
@@ -159,5 +160,13 @@ try {
   // column already exists
 }
 db.exec("UPDATE jobs SET expires_at = datetime(created_at, '+30 days') WHERE expires_at IS NULL");
+
+// Migration for databases created before the "5 days left" expiry warning
+// push notification feature.
+try {
+  db.exec('ALTER TABLE jobs ADD COLUMN expiry_warning_sent INTEGER NOT NULL DEFAULT 0');
+} catch {
+  // column already exists
+}
 
 module.exports = db;
