@@ -55,11 +55,23 @@ async function completePayment(payment) {
         employeeId
       );
       const employer = db.prepare('SELECT * FROM users WHERE id = ?').get(payment.user_id);
+      const employerName = employer?.company_name || employer?.name;
+      const employerPhone = employer?.phone ? `+258 ${employer.phone}` : null;
+      const extraInfo = [employer?.location].filter(Boolean).join(' · ');
       await notifyUser(employeeId, {
         type: 'contact_unlocked',
         title: 'O seu contacto foi desbloqueado',
-        body: `${employer?.company_name || employer?.name} desbloqueou o seu contacto e pode agora falar consigo.`,
-        data: { employerId: payment.user_id },
+        body:
+          `${employerName} desbloqueou o seu contacto e quer falar consigo.` +
+          (employerPhone ? ` Contacto: ${employerPhone}` : '') +
+          (extraInfo ? ` — ${extraInfo}` : ''),
+        data: {
+          employerId: payment.user_id,
+          employerName,
+          employerPhone: employer?.phone || null,
+          employerCompanyName: employer?.company_name || null,
+          employerLocation: employer?.location || null,
+        },
       });
     }
     return;
