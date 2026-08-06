@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import ScreenHeader from '../../components/ScreenHeader';
 import Avatar from '../../components/Avatar';
 import { api } from '../../api/client';
+import { useNotifications } from '../../context/NotificationsContext';
 import { colors, radius, spacing } from '../../theme/colors';
 
 function timeAgo(iso) {
@@ -20,6 +21,7 @@ function timeAgo(iso) {
 export default function EmployerNotificationsScreen({ navigation }) {
   const [applicants, setApplicants] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { refresh: refreshUnreadCount } = useNotifications();
 
   useFocusEffect(
     useCallback(() => {
@@ -28,7 +30,10 @@ export default function EmployerNotificationsScreen({ navigation }) {
         try {
           const { applicants: fetched } = await api.get('/applications/received');
           if (active) setApplicants(fetched);
-          api.post('/notifications/read-all').catch(() => {});
+          api
+            .post('/notifications/read-all')
+            .then(refreshUnreadCount)
+            .catch(() => {});
         } catch (err) {
           console.warn(err.message);
         } finally {

@@ -6,6 +6,7 @@ import CandidateSearchScreen from '../screens/employer/CandidateSearchScreen';
 import PostJobScreen from '../screens/employer/PostJobScreen';
 import EmployerNotificationsScreen from '../screens/employer/EmployerNotificationsScreen';
 import ProfileScreen from '../screens/shared/ProfileScreen';
+import { useNotifications } from '../context/NotificationsContext';
 import { colors } from '../theme/colors';
 
 const Tab = createBottomTabNavigator();
@@ -19,6 +20,8 @@ const ICONS = {
 };
 
 export default function EmployerTabs() {
+  const { unreadCount } = useNotifications();
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -34,7 +37,11 @@ export default function EmployerTabs() {
       <Tab.Screen name="EmployerHome" component={EmployerHomeScreen} options={{ tabBarLabel: 'Início' }} />
       <Tab.Screen name="CandidateSearch" component={CandidateSearchScreen} options={{ tabBarLabel: 'Procurar' }} />
       <Tab.Screen name="PostJob" component={PostJobScreen} options={{ tabBarLabel: 'Publicar' }} />
-      <Tab.Screen name="EmployerNotifications" component={EmployerNotificationsScreen} options={{ tabBarLabel: 'Notificações' }} />
+      <Tab.Screen
+        name="EmployerNotifications"
+        component={EmployerNotificationsScreen}
+        options={{ tabBarLabel: 'Notificações', tabBarBadge: unreadCount > 0 ? unreadCount : undefined }}
+      />
       <Tab.Screen name="Profile" component={ProfileScreen} options={{ tabBarLabel: 'Perfil' }} />
     </Tab.Navigator>
   );

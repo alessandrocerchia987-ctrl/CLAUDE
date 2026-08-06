@@ -4,6 +4,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenHeader from '../../components/ScreenHeader';
 import { api } from '../../api/client';
+import { useNotifications } from '../../context/NotificationsContext';
 import { colors, radius, spacing } from '../../theme/colors';
 
 const ICONS = {
@@ -26,6 +27,7 @@ function timeAgo(iso) {
 export default function NotificationsScreen({ navigation }) {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { refresh: refreshUnreadCount } = useNotifications();
 
   useFocusEffect(
     useCallback(() => {
@@ -34,7 +36,10 @@ export default function NotificationsScreen({ navigation }) {
         try {
           const { notifications: fetched } = await api.get('/notifications');
           if (active) setNotifications(fetched);
-          api.post('/notifications/read-all').catch(() => {});
+          api
+            .post('/notifications/read-all')
+            .then(refreshUnreadCount)
+            .catch(() => {});
         } catch (err) {
           console.warn(err.message);
         } finally {

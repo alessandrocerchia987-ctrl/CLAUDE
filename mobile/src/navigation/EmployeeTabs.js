@@ -5,6 +5,7 @@ import HomeFeedScreen from '../screens/employee/HomeFeedScreen';
 import SearchJobsScreen from '../screens/employee/SearchJobsScreen';
 import NotificationsScreen from '../screens/shared/NotificationsScreen';
 import ProfileScreen from '../screens/shared/ProfileScreen';
+import { useNotifications } from '../context/NotificationsContext';
 import { colors } from '../theme/colors';
 
 const Tab = createBottomTabNavigator();
@@ -17,6 +18,8 @@ const ICONS = {
 };
 
 export default function EmployeeTabs() {
+  const { unreadCount } = useNotifications();
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -31,7 +34,11 @@ export default function EmployeeTabs() {
     >
       <Tab.Screen name="Home" component={HomeFeedScreen} options={{ tabBarLabel: 'Início' }} />
       <Tab.Screen name="Search" component={SearchJobsScreen} options={{ tabBarLabel: 'Procurar' }} />
-      <Tab.Screen name="Notifications" component={NotificationsScreen} options={{ tabBarLabel: 'Notificações' }} />
+      <Tab.Screen
+        name="Notifications"
+        component={NotificationsScreen}
+        options={{ tabBarLabel: 'Notificações', tabBarBadge: unreadCount > 0 ? unreadCount : undefined }}
+      />
       <Tab.Screen name="Profile" component={ProfileScreen} options={{ tabBarLabel: 'Perfil' }} />
     </Tab.Navigator>
   );

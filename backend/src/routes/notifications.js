@@ -14,6 +14,13 @@ router.get('/', requireAuth, (req, res) => {
   res.json({ notifications: rows.map(serializeNotification) });
 });
 
+router.get('/unread-count', requireAuth, (req, res) => {
+  const { count } = db
+    .prepare('SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND read = 0')
+    .get(req.user.id);
+  res.json({ count });
+});
+
 router.post('/:id/read', requireAuth, (req, res) => {
   db.prepare('UPDATE notifications SET read = 1 WHERE id = ? AND user_id = ?').run(
     req.params.id,
