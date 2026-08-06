@@ -1,4 +1,20 @@
 require('dotenv').config();
+
+// Last-resort safety net: a single unhandled error anywhere (an async route
+// handler that throws without try/catch, a background job, etc.) used to
+// crash the entire process — taking down the server for every user until
+// Render restarted it, and silently dropping whatever request or webhook was
+// in flight (this is what happened with a malformed ZumboPay webhook payload
+// crashing payment confirmation). Logging and continuing instead means one
+// bad request can no longer bring the whole app down. This does not replace
+// fixing the underlying bug — it just stops one bug from becoming an outage.
+process.on('unhandledRejection', (err) => {
+  console.error('[unhandledRejection]', err);
+});
+process.on('uncaughtException', (err) => {
+  console.error('[uncaughtException]', err);
+});
+
 const path = require('node:path');
 const fs = require('node:fs');
 const express = require('express');
