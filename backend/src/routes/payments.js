@@ -271,6 +271,8 @@ router.post('/webhook', async (req, res) => {
       return res.status(401).json({ error: 'Assinatura inválida.' });
     }
 
+    console.log('[zumbopay] POST /webhook received:', JSON.stringify(req.body));
+
     const { event, data } = req.body || {};
     // node:sqlite rejects `undefined` bind params (only null/number/string/
     // buffer are allowed) — a webhook payload missing these fields used to
@@ -286,6 +288,9 @@ router.post('/webhook', async (req, res) => {
       : null;
 
     if (!payment) {
+      console.log(
+        `[zumbopay] webhook matched no payment (source_id=${paymentId}, reference=${reference}) — acknowledging anyway`
+      );
       // Not one of ours (or already deleted) — acknowledge anyway so
       // ZumboPay doesn't keep retrying.
       return res.json({ ok: true });
