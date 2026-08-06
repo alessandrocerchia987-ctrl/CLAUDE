@@ -265,37 +265,51 @@ router.get('/:id', requireAuth, (req, res) => {
 // ZumboPay calls this — not user-authenticated, verified by HMAC signature
 // instead. req.rawBody is populated in server.js specifically for this.
 router.post('/webhook', async (req, res) => {
-  const signature = req.get('x-zumbopay-signature');
-  if (!verifyWebhookSignature(req.rawBody, signature)) {
-    return res.status(401).json({ error: 'Assinatura inválida.' });
+  try {
+    const signature = req.get('x-zumbopay-signature');
+    if (!verifyWebhookSignature(req.rawBody, signature)) {
+      return res.status(401).json({ error: 'Assinatura inválida.' });
+    }
+
+    const { event, data } = req.body || {};
+    // node:sqlite rejects `undefined` bind params (only null/number/string/
+    // buffer are allowed) — a webhook payload missing these fields used to
+    // crash the whole process here. Coerce to null so a malformed/partial
+    // payload just fails the lookup below instead of taking the server down.
+    const paymentId = data?.source_id ?? null;
+    const reference = data?.reference ?? null;
+
+    const payment = paymentId
+      ? db.prepare('SELECT * FROM payments WHERE id = ?').get(paymentId)
+      : reference
+      ? db.prepare('SELECT * FROM payments WHERE provider_reference = ?').get(reference)
+      : null;
+
+    if (!payment) {
+      // Not one of ours (or already deleted) — acknowledge anyway so
+      // ZumboPay doesn't keep retrying.
+      return res.json({ ok: true });
+    }
+
+    if (event === 'payment.succeeded' && payment.status !== 'success') {
+      db.prepare("UPDATE payments SET status = 'success', updated_at = datetime('now') WHERE id = ?").run(
+        payment.id
+      );
+      await completePayment(payment);
+    } else if (event === 'payment.failed') {
+      db.prepare("UPDATE payments SET status = 'failed', updated_at = datetime('now') WHERE id = ?").run(
+        payment.id
+      );
+    }
+
+    res.json({ ok: true });
+  } catch (err) {
+    // A webhook is external, uncontrolled input — never let a malformed or
+    // unexpected payload crash the whole server. Log it and acknowledge so
+    // ZumboPay doesn't keep retrying a request we can't process anyway.
+    console.error('[webhook] failed to process:', err);
+    res.json({ ok: true });
   }
-
-  const { event, data } = req.body || {};
-  const paymentId = data?.source_id;
-  const reference = data?.reference;
-
-  const payment = paymentId
-    ? db.prepare('SELECT * FROM payments WHERE id = ?').get(paymentId)
-    : db.prepare('SELECT * FROM payments WHERE provider_reference = ?').get(reference);
-
-  if (!payment) {
-    // Not one of ours (or already deleted) — acknowledge anyway so
-    // ZumboPay doesn't keep retrying.
-    return res.json({ ok: true });
-  }
-
-  if (event === 'payment.succeeded' && payment.status !== 'success') {
-    db.prepare("UPDATE payments SET status = 'success', updated_at = datetime('now') WHERE id = ?").run(
-      payment.id
-    );
-    await completePayment(payment);
-  } else if (event === 'payment.failed') {
-    db.prepare("UPDATE payments SET status = 'failed', updated_at = datetime('now') WHERE id = ?").run(
-      payment.id
-    );
-  }
-
-  res.json({ ok: true });
 });
 
 module.exports = router;
