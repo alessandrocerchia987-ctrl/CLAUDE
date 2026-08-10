@@ -5,6 +5,7 @@ const { requireAuth } = require('../middleware/auth');
 const { upload, relativeUploadPath } = require('../middleware/upload');
 const { createCharge, createHostedPayment, verifyWebhookSignature } = require('../utils/zumbopay');
 const { notifyUser } = require('../utils/push');
+const { isBlocked } = require('../utils/blocks');
 
 const router = express.Router();
 
@@ -171,6 +172,9 @@ router.post('/charge', requireAuth, upload.single('photo'), async (req, res) => 
     if (!employee || employee.account_type !== 'employee') {
       return res.status(404).json({ error: 'Candidato não encontrado.' });
     }
+    if (isBlocked(req.user.id, employee.id)) {
+      return res.status(403).json({ error: 'Não é possível contactar este utilizador.' });
+    }
   }
 
   if (purpose === 'post_job') {
@@ -195,6 +199,9 @@ router.post('/charge', requireAuth, upload.single('photo'), async (req, res) => 
     }
     if (job.expires_at && new Date(`${job.expires_at.replace(' ', 'T')}Z`) <= new Date()) {
       return res.status(410).json({ error: 'Esta vaga já expirou.' });
+    }
+    if (isBlocked(req.user.id, job.employer_id)) {
+      return res.status(403).json({ error: 'Não é possível candidatar-se a esta vaga.' });
     }
     const existingApplication = db
       .prepare('SELECT id FROM applications WHERE job_id = ? AND employee_id = ?')

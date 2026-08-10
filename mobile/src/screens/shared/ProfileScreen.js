@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Avatar from '../../components/Avatar';
 import VerifiedBadge from '../../components/VerifiedBadge';
 import Button from '../../components/Button';
+import { api } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { colors, radius, spacing } from '../../theme/colors';
 
@@ -27,6 +28,28 @@ export default function ProfileScreen({ navigation }) {
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Sair', style: 'destructive', onPress: logout },
     ]);
+  }
+
+  function confirmDeleteAccount() {
+    Alert.alert(
+      'Eliminar conta',
+      'Esta ação é permanente. A sua conta, vagas, candidaturas e outros dados serão removidos e não podem ser recuperados. Tem a certeza?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar conta',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.del('/users/me');
+              await logout();
+            } catch (err) {
+              Alert.alert('Não foi possível eliminar a conta', err.message);
+            }
+          },
+        },
+      ]
+    );
   }
 
   const isEmployee = user.accountType === 'employee';
@@ -95,6 +118,11 @@ export default function ProfileScreen({ navigation }) {
       <TouchableOpacity style={styles.logoutBtn} onPress={confirmLogout}>
         <Ionicons name="log-out-outline" size={18} color={colors.danger} />
         <Text style={styles.logoutText}>Terminar sessão</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.logoutBtn} onPress={confirmDeleteAccount}>
+        <Ionicons name="trash-outline" size={18} color={colors.danger} />
+        <Text style={styles.logoutText}>Eliminar conta</Text>
       </TouchableOpacity>
     </ScrollView>
   );

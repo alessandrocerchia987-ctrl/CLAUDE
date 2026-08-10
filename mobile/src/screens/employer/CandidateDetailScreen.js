@@ -81,6 +81,46 @@ export default function CandidateDetailScreen({ route, navigation }) {
     }
   }
 
+  function confirmToggleBlock() {
+    if (!candidate) return;
+    if (candidate.blockedByMe) {
+      Alert.alert('Desbloquear', `Voltar a ver ${candidate.name} nas pesquisas e permitir contacto?`, [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Desbloquear',
+          onPress: async () => {
+            try {
+              await api.del(`/users/${candidateId}/block`);
+              await load();
+            } catch (err) {
+              Alert.alert('Erro', err.message);
+            }
+          },
+        },
+      ]);
+    } else {
+      Alert.alert(
+        'Bloquear candidato',
+        `Deixará de ver ${candidate.name} nas pesquisas e não poderão contactar-se. Tem a certeza?`,
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Bloquear',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await api.post(`/users/${candidateId}/block`);
+                await load();
+              } catch (err) {
+                Alert.alert('Erro', err.message);
+              }
+            },
+          },
+        ]
+      );
+    }
+  }
+
   useEffect(() => {
     load();
     return () => {
@@ -245,7 +285,19 @@ export default function CandidateDetailScreen({ route, navigation }) {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title="Perfil do candidato" onBack={() => navigation.goBack()} />
+      <ScreenHeader
+        title="Perfil do candidato"
+        onBack={() => navigation.goBack()}
+        right={
+          <TouchableOpacity onPress={confirmToggleBlock} hitSlop={10}>
+            <Ionicons
+              name={candidate.blockedByMe ? 'lock-open-outline' : 'hand-left-outline'}
+              size={20}
+              color={colors.textMuted}
+            />
+          </TouchableOpacity>
+        }
+      />
       <ScrollView contentContainerStyle={{ paddingBottom: spacing.xxl }}>
         <View style={styles.header}>
           <Avatar uri={candidate.photoUrl} size={96} />

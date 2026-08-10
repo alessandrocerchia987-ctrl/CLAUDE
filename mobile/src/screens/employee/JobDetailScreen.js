@@ -43,6 +43,7 @@ export default function JobDetailScreen({ route, navigation }) {
   const [job, setJob] = useState(null);
   const [loading, setLoading] = useState(true);
   const [applied, setApplied] = useState(false);
+  const [employerBlocked, setEmployerBlocked] = useState(false);
 
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [checkoutStep, setCheckoutStep] = useState('method'); // method | phone
@@ -51,11 +52,61 @@ export default function JobDetailScreen({ route, navigation }) {
   const [payState, setPayState] = useState('idle'); // idle | charging | waiting | done
   const pollTimer = useRef(null);
 
+  async function loadEmployerBlockState(employerId) {
+    try {
+      const { user: employer } = await api.get(`/users/${employerId}`);
+      setEmployerBlocked(!!employer.blockedByMe);
+    } catch {
+      // non-critical — leave block state as-is
+    }
+  }
+
+  function confirmToggleBlockEmployer() {
+    if (!job?.employer?.id) return;
+    if (employerBlocked) {
+      Alert.alert('Desbloquear', `Voltar a ver vagas de ${job.employer.name} e permitir contacto?`, [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Desbloquear',
+          onPress: async () => {
+            try {
+              await api.del(`/users/${job.employer.id}/block`);
+              setEmployerBlocked(false);
+            } catch (err) {
+              Alert.alert('Erro', err.message);
+            }
+          },
+        },
+      ]);
+    } else {
+      Alert.alert(
+        'Bloquear empregador',
+        `Deixará de ver vagas de ${job.employer.name} e não poderão contactar-se. Tem a certeza?`,
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Bloquear',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await api.post(`/users/${job.employer.id}/block`);
+                setEmployerBlocked(true);
+              } catch (err) {
+                Alert.alert('Erro', err.message);
+              }
+            },
+          },
+        ]
+      );
+    }
+  }
+
   useEffect(() => {
     (async () => {
       try {
         const { job: fetched } = await api.get(`/jobs/${jobId}`);
         setJob(fetched);
+        if (fetched?.employer?.id) loadEmployerBlockState(fetched.employer.id);
       } catch (err) {
         Alert.alert('Erro', err.message);
         navigation.goBack();
@@ -212,9 +263,18 @@ export default function JobDetailScreen({ route, navigation }) {
         title="Vaga"
         onBack={() => navigation.goBack()}
         right={
-          <TouchableOpacity onPress={handleReport} hitSlop={10}>
-            <Ionicons name="flag-outline" size={20} color={colors.textMuted} />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: spacing.md }}>
+            <TouchableOpacity onPress={confirmToggleBlockEmployer} hitSlop={10}>
+              <Ionicons
+                name={employerBlocked ? 'lock-open-outline' : 'hand-left-outline'}
+                size={20}
+                color={colors.textMuted}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleReport} hitSlop={10}>
+              <Ionicons name="flag-outline" size={20} color={colors.textMuted} />
+            </TouchableOpacity>
+          </View>
         }
       />
       <ScrollView contentContainerStyle={{ paddingBottom: spacing.xxl }}>

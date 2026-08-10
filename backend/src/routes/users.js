@@ -1,9 +1,13 @@
 const express = require('express');
+const path = require('node:path');
+const fs = require('node:fs/promises');
 const db = require('../db');
+const { newId } = require('../utils/ids');
 const { requireAuth } = require('../middleware/auth');
-const { upload, relativeUploadPath } = require('../middleware/upload');
+const { upload, relativeUploadPath, UPLOAD_DIR } = require('../middleware/upload');
 const { serializeUser } = require('../utils/serialize');
 const { notifyUser } = require('../utils/push');
+const { isBlocked } = require('../utils/blocks');
 
 const router = express.Router();
 
@@ -89,6 +93,42 @@ router.post('/me/photo', requireAuth, upload.single('photo'), (req, res) => {
   res.json({ user: serializeUser(updated, { includePhone: true }) });
 });
 
+// Permanent — deletes the account and, via ON DELETE CASCADE, everything
+// tied to it (jobs, applications, contact unlocks, notifications, stories,
+// reports, payments, push tokens, block relationships).
+router.delete('/me', requireAuth, async (req, res) => {
+  if (req.user.photo_url) {
+    try {
+      await fs.unlink(path.join(UPLOAD_DIR, path.basename(req.user.photo_url)));
+    } catch (err) {
+      if (err.code !== 'ENOENT') console.error('Failed to delete profile photo:', err.message);
+    }
+  }
+  db.prepare('DELETE FROM users WHERE id = ?').run(req.user.id);
+  res.json({ ok: true });
+});
+
+router.post('/:id/block', requireAuth, (req, res) => {
+  if (req.params.id === req.user.id) {
+    return res.status(400).json({ error: 'Não pode bloquear a sua própria conta.' });
+  }
+  const target = db.prepare('SELECT id FROM users WHERE id = ?').get(req.params.id);
+  if (!target) return res.status(404).json({ error: 'Utilizador não encontrado.' });
+
+  db.prepare(
+    'INSERT OR IGNORE INTO blocked_users (id, blocker_id, blocked_id) VALUES (?, ?, ?)'
+  ).run(newId('block'), req.user.id, req.params.id);
+  res.status(201).json({ ok: true });
+});
+
+router.delete('/:id/block', requireAuth, (req, res) => {
+  db.prepare('DELETE FROM blocked_users WHERE blocker_id = ? AND blocked_id = ?').run(
+    req.user.id,
+    req.params.id
+  );
+  res.json({ ok: true });
+});
+
 // Minimal one-way in-app message: delivered as a notification to the
 // recipient (no threads/read-receipts — just enough to satisfy the
 // "in-app message" contact option alongside WhatsApp).
@@ -99,6 +139,9 @@ router.post('/:id/message', requireAuth, async (req, res) => {
   }
   const target = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
   if (!target) return res.status(404).json({ error: 'Utilizador não encontrado.' });
+  if (isBlocked(req.user.id, target.id)) {
+    return res.status(403).json({ error: 'Não é possível contactar este utilizador.' });
+  }
 
   await notifyUser(target.id, {
     type: 'direct_message',
@@ -143,7 +186,14 @@ router.get('/:id', requireAuth, (req, res) => {
     includePhone = !!unlock || hasAppliedToEmployer(target.id, req.user.id);
   }
 
-  res.json({ user: serializeUser(target, { includePhone }) });
+  const blockedByMe =
+    target.id === req.user.id
+      ? false
+      : !!db
+          .prepare('SELECT 1 FROM blocked_users WHERE blocker_id = ? AND blocked_id = ?')
+          .get(req.user.id, target.id);
+
+  res.json({ user: { ...serializeUser(target, { includePhone }), blockedByMe } });
 });
 
 // Browse candidates (employees) with filters — employer only in practice,
@@ -164,8 +214,12 @@ router.get('/', requireAuth, (req, res) => {
     q,
   } = req.query;
 
-  const clauses = [`account_type = 'employee'`];
-  const params = {};
+  const clauses = [
+    `account_type = 'employee'`,
+    `id NOT IN (SELECT blocked_id FROM blocked_users WHERE blocker_id = @viewerId)`,
+    `id NOT IN (SELECT blocker_id FROM blocked_users WHERE blocked_id = @viewerId)`,
+  ];
+  const params = { viewerId: req.user.id };
 
   if (profession) {
     clauses.push('profession LIKE @profession');

@@ -24,8 +24,13 @@ router.get('/mine', requireAuth, requireAccountType('employer'), (req, res) => {
 router.get('/', requireAuth, (req, res) => {
   const { q, profession, location, availability, minSalary, verifiedOnly } = req.query;
 
-  const clauses = ['jobs.active = 1', "jobs.expires_at > datetime('now')"];
-  const params = {};
+  const clauses = [
+    'jobs.active = 1',
+    "jobs.expires_at > datetime('now')",
+    'jobs.employer_id NOT IN (SELECT blocked_id FROM blocked_users WHERE blocker_id = @viewerId)',
+    'jobs.employer_id NOT IN (SELECT blocker_id FROM blocked_users WHERE blocked_id = @viewerId)',
+  ];
+  const params = { viewerId: req.user.id };
 
   if (q) {
     clauses.push('(jobs.title LIKE @q OR jobs.sector LIKE @q OR jobs.requirements LIKE @q)');
