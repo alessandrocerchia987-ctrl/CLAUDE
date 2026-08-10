@@ -1,0 +1,42 @@
+# App Review Notes — Emprego Já
+
+Paste this (or a trimmed version) into the "App Review Information → Notes" field in App Store Connect when submitting.
+
+## What this app does
+
+Emprego Já is a job marketplace connecting job seekers ("Candidatos") and employers ("Empregadores") in Mozambique. Employers post job listings and search candidate profiles; job seekers browse listings and apply. There is no social/dating aspect — accounts are strictly typed as either a job seeker or an employer at registration.
+
+## Demo accounts for review
+
+[FILL IN before submitting — see "What you still need to do" below]
+
+- Employer demo account: phone `[fill in]`, password `[fill in]`
+- Job seeker demo account: phone `[fill in]`, password `[fill in]`
+
+Both accounts already have some sample activity (a posted job, an application) so the core flows are visible without needing to create content from scratch.
+
+## About the paid actions and payment method
+
+Posting a job, applying to a job, and unlocking a candidate's contact details each have a small fee (100 MZN, 50 MZN, and 50 MZN respectively), processed through ZumboPay, a Mozambican payment gateway — not Apple's In-App Purchase. This is intentional and, we believe, compliant with Guideline 3.1.1's exception: these are payments for a real-world service (facilitating a job connection), the same category as Uber, TaskRabbit, or LinkedIn's job-posting fees — not digital content or unlockable app functionality.
+
+**Important for testing the payment flow:** the primary payment methods (M-Pesa, e-Mola) are Mozambican mobile-money services tied to a local phone number, which reviewers outside Mozambique will not be able to use. The app also supports **card payment (Visa/Mastercard)** via the same ZumboPay checkout — when testing a paid action, please choose the **card** option rather than M-Pesa/e-Mola, as that path does not require a Mozambican mobile money account.
+
+## Account deletion
+
+Users can permanently delete their account and all associated data from Profile → "Eliminar conta" ("Delete account"). This is a hard delete, not a deactivation.
+
+## Blocking and reporting
+
+Users can report a job listing (flag icon on the job detail screen) and can block another user they've interacted with (also on the job/candidate detail screen) — blocking hides that user's content from both parties and prevents further contact.
+
+## Permissions
+
+Camera and photo library access are requested only when the user chooses to add a profile photo or a Story photo, with clear in-context purpose strings.
+
+---
+
+## What you still need to do before submitting (Alessandro)
+
+1. **Create the two demo accounts** on the live app (one employer, one job seeker) with credentials you're comfortable sharing with Apple, and fill them into this document above.
+2. Post one sample job from the demo employer account, and submit one sample application from the demo job seeker account, so reviewers see real content without having to create it themselves.
+3. Decide whether you want reviewers to actually complete a real card payment (small real charge) to test that flow, or whether to note in this document that the flow is available but a live charge isn't necessary to verify the review criteria — this is a judgment call; if Apple pushes back asking to see it work, you may need to let them complete one small real transaction.
