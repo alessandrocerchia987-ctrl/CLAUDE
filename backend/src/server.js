@@ -37,6 +37,7 @@ const notificationRoutes = require('./routes/notifications');
 const storyRoutes = require('./routes/stories');
 const supportRoutes = require('./routes/support');
 const paymentRoutes = require('./routes/payments');
+const legalRoutes = require('./routes/legal');
 const { startStoryCleanupSchedule } = require('./utils/cleanupStories');
 const { startJobExpiryWarningSchedule } = require('./utils/notifyExpiringJobs');
 
@@ -65,6 +66,7 @@ app.use('/notifications', notificationRoutes);
 app.use('/stories', storyRoutes);
 app.use('/support', supportRoutes);
 app.use('/payments', paymentRoutes);
+app.use('/', legalRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ error: 'Rota não encontrada.' });
