@@ -2,7 +2,7 @@
 
 **Nota importante:** Este documento é um modelo/rascunho preparado para acelerar o lançamento da aplicação. Não substitui aconselhamento jurídico. Recomendamos que um advogado licenciado em Moçambique reveja este texto antes de o publicar, especialmente as secções sobre pagamentos, responsabilidade e resolução de conflitos.
 
-*Última actualização: [preencher data]*
+*Última actualização: 12 de Agosto de 2026*
 
 ## 1. Aceitação dos termos
 
@@ -89,5 +89,5 @@ Podemos actualizar estes Termos periodicamente. O uso continuado da aplicação 
 ## 16. Contacto
 
 Para questões sobre estes Termos:
-**[preencher nome da empresa/responsável]**
-**[preencher e-mail de contacto]**
+**Alessandro Cerchia**
+**alecerchia6@gmail.com**

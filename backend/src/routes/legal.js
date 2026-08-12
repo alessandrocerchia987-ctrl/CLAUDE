@@ -30,7 +30,7 @@ router.get('/privacy-policy', (req, res) => {
       'Política de Privacidade',
       `
     <h1>Política de Privacidade — Emprego Já</h1>
-    <p class="updated">Última actualização: [preencher data]</p>
+    <p class="updated">Última actualização: 12 de Agosto de 2026</p>
     <div class="notice">Este documento é um modelo/rascunho preparado para acelerar o lançamento da aplicação. Não substitui aconselhamento jurídico.</div>
 
     <h2>1. Introdução</h2>
@@ -87,7 +87,7 @@ router.get('/privacy-policy', (req, res) => {
       <li>Bloquear outro utilizador na aplicação</li>
       <li>Contactar-nos com questões sobre os seus dados pessoais</li>
     </ul>
-    <p>Contacto para questões de privacidade: <strong>[preencher e-mail de contacto]</strong></p>
+    <p>Contacto para questões de privacidade: <strong>alecerchia6@gmail.com</strong></p>
 
     <h2>8. Menores de idade</h2>
     <p>A Emprego Já destina-se a maiores de 18 anos. Contas de menores de idade serão eliminadas se identificadas.</p>
@@ -99,7 +99,7 @@ router.get('/privacy-policy', (req, res) => {
     <p>Podemos actualizar esta política periodicamente, notificando alterações relevantes através da aplicação.</p>
 
     <h2>11. Contacto</h2>
-    <p><strong>[preencher nome da empresa/responsável]</strong><br/><strong>[preencher e-mail de contacto]</strong></p>
+    <p><strong>Alessandro Cerchia</strong><br/><strong>alecerchia6@gmail.com</strong></p>
   `
     )
   );
@@ -111,7 +111,7 @@ router.get('/terms-of-service', (req, res) => {
       'Termos de Serviço',
       `
     <h1>Termos de Serviço — Emprego Já</h1>
-    <p class="updated">Última actualização: [preencher data]</p>
+    <p class="updated">Última actualização: 12 de Agosto de 2026</p>
     <div class="notice">Este documento é um modelo/rascunho preparado para acelerar o lançamento da aplicação. Não substitui aconselhamento jurídico.</div>
 
     <h2>1. Aceitação dos termos</h2>
@@ -177,7 +177,7 @@ router.get('/terms-of-service', (req, res) => {
     <p>O uso continuado da aplicação após uma actualização constitui aceitação dos novos Termos.</p>
 
     <h2>16. Contacto</h2>
-    <p><strong>[preencher nome da empresa/responsável]</strong><br/><strong>[preencher e-mail de contacto]</strong></p>
+    <p><strong>Alessandro Cerchia</strong><br/><strong>alecerchia6@gmail.com</strong></p>
   `
     )
   );

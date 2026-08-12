@@ -2,7 +2,7 @@
 
 **Nota importante:** Este documento é um modelo/rascunho preparado para acelerar o lançamento da aplicação. Não substitui aconselhamento jurídico. Recomendamos que um advogado licenciado em Moçambique reveja este texto antes de o publicar, especialmente as secções sobre dados pessoais, menores de idade e pagamentos.
 
-*Última actualização: [preencher data]*
+*Última actualização: 12 de Agosto de 2026*
 
 ## 1. Introdução
 
@@ -67,7 +67,7 @@ Pode, a qualquer momento:
 - Bloquear outro utilizador directamente na aplicação, deixando de ver o respectivo conteúdo e de ser contactado por ele
 - Contactar-nos com questões sobre os seus dados pessoais
 
-Contacto para questões de privacidade: **[preencher e-mail de contacto]**
+Contacto para questões de privacidade: **alecerchia6@gmail.com**
 
 ## 8. Menores de idade
 
@@ -84,5 +84,5 @@ Podemos actualizar esta Política de Privacidade periodicamente. Notificaremos s
 ## 11. Contacto
 
 Para questões sobre esta política ou sobre os seus dados pessoais:
-**[preencher nome da empresa/responsável]**
-**[preencher e-mail de contacto]**
+**Alessandro Cerchia**
+**alecerchia6@gmail.com**
