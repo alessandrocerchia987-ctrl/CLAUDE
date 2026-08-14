@@ -12,9 +12,12 @@ function normalizePhone(raw) {
   return String(raw || '').replace(/\D/g, '');
 }
 
+// Users expect to stay logged in until they explicitly log out, not get
+// silently signed out after a fixed window — so this defaults to a long
+// (not infinite) lifetime rather than a short one.
 function signToken(userId) {
   return jwt.sign({ userId }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN || '30d',
+    expiresIn: process.env.JWT_EXPIRES_IN || '365d',
   });
 }
 
