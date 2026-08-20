@@ -46,7 +46,8 @@ CREATE TABLE IF NOT EXISTS users (
   company_description TEXT,
 
   verified INTEGER NOT NULL DEFAULT 0,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  last_active_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS push_tokens (
@@ -178,5 +179,15 @@ try {
 } catch {
   // column already exists
 }
+
+// Migration for databases created before "last active" tracking on users —
+// backfill with created_at so existing accounts get a sensible starting
+// point instead of NULL.
+try {
+  db.exec('ALTER TABLE users ADD COLUMN last_active_at TEXT');
+} catch {
+  // column already exists
+}
+db.exec('UPDATE users SET last_active_at = created_at WHERE last_active_at IS NULL');
 
 module.exports = db;

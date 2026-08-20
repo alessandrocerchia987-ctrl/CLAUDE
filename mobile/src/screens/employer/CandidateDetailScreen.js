@@ -20,6 +20,7 @@ import Avatar from '../../components/Avatar';
 import VerifiedBadge from '../../components/VerifiedBadge';
 import Button from '../../components/Button';
 import { api } from '../../api/client';
+import { lastActiveLabel } from '../../utils/lastActive';
 import { colors, radius, spacing } from '../../theme/colors';
 
 const POLL_INTERVAL_MS = 2500;
@@ -307,6 +308,12 @@ export default function CandidateDetailScreen({ route, navigation }) {
           </View>
           {candidate.profession ? <Text style={styles.profession}>{candidate.profession}</Text> : null}
           {candidate.location ? <Text style={styles.location}>{candidate.location}</Text> : null}
+          {candidate.lastActiveAt ? (
+            <View style={styles.activeRow}>
+              <View style={styles.activeDot} />
+              <Text style={styles.activeLabel}>{lastActiveLabel(candidate.lastActiveAt)}</Text>
+            </View>
+          ) : null}
 
           <View style={styles.contactCard}>
             {candidate.phoneLocked ? (
@@ -474,6 +481,9 @@ const styles = StyleSheet.create({
   name: { fontSize: 20, fontWeight: '800', color: colors.text },
   profession: { fontSize: 14, color: colors.teal, fontWeight: '600', marginTop: 4 },
   location: { fontSize: 13, color: colors.textMuted, marginTop: 2 },
+  activeRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 6 },
+  activeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.textMuted },
+  activeLabel: { fontSize: 12, color: colors.textMuted, fontWeight: '600' },
   contactCard: {
     marginTop: spacing.lg,
     alignSelf: 'stretch',

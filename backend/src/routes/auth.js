@@ -127,11 +127,20 @@ router.post('/login', async (req, res) => {
   const ok = await bcrypt.compare(String(password || ''), user.password_hash);
   if (!ok) return res.status(401).json({ error: 'Telefone ou palavra-passe incorretos.' });
 
+  db.prepare("UPDATE users SET last_active_at = datetime('now') WHERE id = ?").run(user.id);
+  user.last_active_at = db.prepare('SELECT last_active_at FROM users WHERE id = ?').get(user.id).last_active_at;
   const token = signToken(user.id);
   res.json({ token, user: serializeUser(user, { includePhone: true }) });
 });
 
+// Called once per app launch to restore a saved session — the best signal
+// available for "this person actually opened the app," so it's what keeps
+// last_active_at meaningful for the inactivity label on candidate profiles.
 router.get('/me', requireAuth, (req, res) => {
+  db.prepare("UPDATE users SET last_active_at = datetime('now') WHERE id = ?").run(req.user.id);
+  req.user.last_active_at = db
+    .prepare('SELECT last_active_at FROM users WHERE id = ?')
+    .get(req.user.id).last_active_at;
   res.json({ user: serializeUser(req.user, { includePhone: true }) });
 });
 

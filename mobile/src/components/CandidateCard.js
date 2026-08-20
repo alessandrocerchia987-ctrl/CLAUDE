@@ -4,6 +4,7 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing } from '../theme/colors';
 import VerifiedBadge from './VerifiedBadge';
+import { lastActiveLabel } from '../utils/lastActive';
 
 export default function CandidateCard({ candidate, onPress }) {
   return (
@@ -45,6 +46,12 @@ export default function CandidateCard({ candidate, onPress }) {
 
         {candidate.yearsExperience != null ? (
           <Text style={styles.metaText}>{candidate.yearsExperience} anos de experiência</Text>
+        ) : null}
+
+        {candidate.lastActiveAt ? (
+          <Text style={styles.activeText} numberOfLines={1}>
+            {lastActiveLabel(candidate.lastActiveAt)}
+          </Text>
         ) : null}
 
         <TouchableOpacity style={styles.viewBtn} onPress={onPress}>
@@ -119,6 +126,12 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginTop: spacing.xs,
     flexShrink: 1,
+  },
+  activeText: {
+    fontSize: 10.5,
+    color: colors.textMuted,
+    fontWeight: '600',
+    marginTop: spacing.xs,
   },
   viewBtn: {
     marginTop: spacing.sm,

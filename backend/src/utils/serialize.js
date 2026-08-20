@@ -32,6 +32,7 @@ function serializeUser(user, { includePhone = false } = {}) {
     bio: user.bio,
     verified: !!user.verified,
     createdAt: user.created_at,
+    lastActiveAt: user.last_active_at,
     phone: includePhone ? user.phone : null,
     phoneLocked: !includePhone,
   };
