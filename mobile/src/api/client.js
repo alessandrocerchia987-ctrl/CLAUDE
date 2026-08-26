@@ -1,6 +1,11 @@
 import * as SecureStore from 'expo-secure-store';
 
-export const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:4000';
+// Falls back to the real live backend rather than localhost — `eas update`
+// (unlike `eas build`) doesn't apply eas.json's per-profile env vars, and
+// .env is gitignored so it's never present in a fresh download either. A
+// build/update with no explicit override should still reach production,
+// not a placeholder address nobody's actually running.
+export const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://empregoja-api.onrender.com';
 
 const TOKEN_KEY = 'empregoja_token';
 
