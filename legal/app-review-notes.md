@@ -19,7 +19,7 @@ Both accounts already have some sample activity (a posted job, an application) s
 
 Posting a job, applying to a job, and unlocking a candidate's contact details each have a small fee (100 MZN, 50 MZN, and 50 MZN respectively), processed through ZumboPay, a Mozambican payment gateway — not Apple's In-App Purchase. This is intentional and, we believe, compliant with Guideline 3.1.1's exception: these are payments for a real-world service (facilitating a job connection), the same category as Uber, TaskRabbit, or LinkedIn's job-posting fees — not digital content or unlockable app functionality.
 
-**Important for testing the payment flow:** the primary payment methods (M-Pesa, e-Mola) are Mozambican mobile-money services tied to a local phone number, which reviewers outside Mozambique will not be able to use. The app also supports **card payment (Visa/Mastercard)** via the same ZumboPay checkout — when testing a paid action, please choose the **card** option rather than M-Pesa/e-Mola, as that path does not require a Mozambican mobile money account.
+**Important for testing the payment flow:** the only payment methods currently offered are M-Pesa and e-Mola, both Mozambican mobile-money services tied to a local phone number — reviewers outside Mozambique will not be able to complete one of these payments themselves. For this reason, the demo accounts above are pre-populated with a sample job posting and a sample application already in place, so the full flow (an employer receiving and viewing an application, unlocking contact details, notifications) is visible without needing to trigger a new payment. We're happy to provide a screen recording of the payment flow itself on request.
 
 ## Account deletion
 
@@ -39,4 +39,4 @@ Camera and photo library access are requested only when the user chooses to add 
 
 1. **Create the two demo accounts** on the live app (one employer, one job seeker) with credentials you're comfortable sharing with Apple, and fill them into this document above.
 2. Post one sample job from the demo employer account, and submit one sample application from the demo job seeker account, so reviewers see real content without having to create it themselves.
-3. Decide whether you want reviewers to actually complete a real card payment (small real charge) to test that flow, or whether to note in this document that the flow is available but a live charge isn't necessary to verify the review criteria — this is a judgment call; if Apple pushes back asking to see it work, you may need to let them complete one small real transaction.
+3. If Apple pushes back and specifically asks to see a live payment work, the fastest option is sending them a short screen recording of the M-Pesa/e-Mola checkout flow rather than expecting a reviewer to have a Mozambican mobile money account.
