@@ -48,9 +48,15 @@
       "icon": "./assets/icon.png",
       "color": "#E0562F"
     },
+    "updates": {
+      "url": "https://u.expo.dev/dd1baa77-e2dd-4e38-b0ed-296119d6d818"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "extra": {
       "eas": {
-        "projectId": "REPLACE_WITH_EAS_PROJECT_ID"
+        "projectId": "dd1baa77-e2dd-4e38-b0ed-296119d6d818"
       }
     }
   }
