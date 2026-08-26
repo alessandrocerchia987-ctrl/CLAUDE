@@ -215,7 +215,7 @@ export default function JobDetailScreen({ route, navigation }) {
       }
 
       setPayState('waiting');
-      await WebBrowser.openBrowserAsync(checkoutUrl);
+      await WebBrowser.openAuthSessionAsync(checkoutUrl, 'empregoja://payment-complete');
       await pollUntilConfirmed(paymentId);
     } catch (err) {
       setPayState('idle');

@@ -180,7 +180,7 @@ export default function PostJobScreen({ navigation }) {
       }
 
       setPayState('waiting');
-      await WebBrowser.openBrowserAsync(checkoutUrl);
+      await WebBrowser.openAuthSessionAsync(checkoutUrl, 'empregoja://payment-complete');
       await pollUntilConfirmed(paymentId);
     } catch (err) {
       setPayState('idle');

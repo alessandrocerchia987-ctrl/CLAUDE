@@ -210,7 +210,7 @@ export default function CandidateDetailScreen({ route, navigation }) {
       }
 
       setPayState('waiting');
-      await WebBrowser.openBrowserAsync(checkoutUrl);
+      await WebBrowser.openAuthSessionAsync(checkoutUrl, 'empregoja://payment-complete');
 
       // The browser closing doesn't mean payment succeeded (user may have
       // just backed out) — keep polling until the webhook confirms either way.

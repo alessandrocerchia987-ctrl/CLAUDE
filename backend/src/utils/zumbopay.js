@@ -103,6 +103,12 @@ async function createHostedPayment({ amount, title, sourceId }) {
     currency: 'MZN',
     title,
     source_id: sourceId,
+    // Tells ZumboPay's hosted checkout where to send the customer back to
+    // once they've paid — without this the page just sits on its own
+    // "success" screen with no way back into the app. Matches the app's
+    // `scheme` in app.json; openAuthSessionAsync on the mobile side
+    // watches for this exact URL and auto-closes the browser when it sees it.
+    redirect_url: 'empregoja://payment-complete',
   };
   console.log('[zumbopay] POST /payments request:', JSON.stringify(requestBody));
 
