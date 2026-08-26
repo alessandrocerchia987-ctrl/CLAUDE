@@ -8,12 +8,10 @@ Emprego Já is a job marketplace connecting job seekers ("Candidatos") and emplo
 
 ## Demo accounts for review
 
-[FILL IN before submitting — see "What you still need to do" below]
+- Employer demo account: phone `+258 843895010`, password `123456`
+- Job seeker demo account: phone `+258 840113646`, password `123456`
 
-- Employer demo account: phone `[fill in]`, password `[fill in]`
-- Job seeker demo account: phone `[fill in]`, password `[fill in]`
-
-Both accounts already have some sample activity (a posted job, an application) so the core flows are visible without needing to create content from scratch.
+The employer account already has a sample job posted, so the core employer flows are visible without needing to create content from scratch.
 
 ## About the paid actions and payment method
 
@@ -37,6 +35,6 @@ Camera and photo library access are requested only when the user chooses to add 
 
 ## What you still need to do before submitting (Alessandro)
 
-1. **Create the two demo accounts** on the live app (one employer, one job seeker) with credentials you're comfortable sharing with Apple, and fill them into this document above.
-2. Post one sample job from the demo employer account, and submit one sample application from the demo job seeker account, so reviewers see real content without having to create it themselves.
+1. ~~Create the two demo accounts~~ — done, see above.
+2. ~~Post one sample job from the demo employer account~~ — done. Still worth submitting one sample application from the demo job seeker account when you're back somewhere M-Pesa/e-Mola works, so reviewers can also see the employer's "view applicant" flow without having to create it themselves — not a blocker if it doesn't happen before submission.
 3. If Apple pushes back and specifically asks to see a live payment work, the fastest option is sending them a short screen recording of the M-Pesa/e-Mola checkout flow rather than expecting a reviewer to have a Mozambican mobile money account.
