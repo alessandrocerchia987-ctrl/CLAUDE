@@ -31,10 +31,13 @@ const POLL_MAX_ATTEMPTS = 24; // ~60s
 const JOB_POST_BASE = 100;
 const JOB_BOOST_ADDON = 50;
 
+// Card temporarily hidden — ZumboPay's hosted checkout doesn't return to
+// the app after payment, and M-Pesa/e-Mola cover the vast majority of
+// how people in Mozambique pay anyway. Re-add once a working card
+// provider (e.g. PaySuite) is wired up.
 const PAYMENT_METHODS = [
   { id: 'mpesa', label: 'M-Pesa', prefixes: ['84', '85'], dotColor: '#1E8A44' },
   { id: 'emola', label: 'e-Mola', prefixes: ['86', '87'], dotColor: colors.coral },
-  { id: 'card', label: 'Visa / Mastercard', dotColor: colors.navy },
 ];
 
 function methodMatchesPhone(method, phone) {
