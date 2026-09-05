@@ -20,6 +20,7 @@ import Button from '../../components/Button';
 import VerifiedBadge from '../../components/VerifiedBadge';
 import Avatar from '../../components/Avatar';
 import { api, ApiError } from '../../api/client';
+import { useAuth } from '../../context/AuthContext';
 import { colors, radius, spacing } from '../../theme/colors';
 
 const POLL_INTERVAL_MS = 2500;
@@ -42,6 +43,7 @@ function methodMatchesPhone(method, phone) {
 }
 
 export default function JobDetailScreen({ route, navigation }) {
+  const { user, refreshUser } = useAuth();
   const { jobId } = route.params;
   const [job, setJob] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -239,7 +241,32 @@ export default function JobDetailScreen({ route, navigation }) {
     setCheckoutStep('method');
     setPayMethod(null);
     setPayPhone('');
+    refreshUser();
     Alert.alert('Candidatura enviada', 'O empregador foi notificado da sua candidatura.');
+  }
+
+  // Applying via credit always completes instantly — no boost-style add-on
+  // to charge separately, so no phone number is ever needed here.
+  async function handlePayWithCredit() {
+    setPayState('charging');
+    try {
+      const { status } = await api.post('/payments/charge', {
+        purpose: 'apply',
+        method: 'credit',
+        payload: { jobId },
+      });
+      if (status === 'success') {
+        await finishApply();
+      }
+    } catch (err) {
+      setPayState('idle');
+      if (err instanceof ApiError && err.status === 409) {
+        setApplied(true);
+        setCheckoutOpen(false);
+      } else {
+        Alert.alert('Não foi possível usar o crédito', err.message);
+      }
+    }
   }
 
   async function handleReport() {
@@ -375,6 +402,17 @@ export default function JobDetailScreen({ route, navigation }) {
               <>
                 <Text style={styles.modalTitle}>Como quer pagar?</Text>
                 <Text style={styles.amount}>{APPLY_AMOUNT} MZN</Text>
+                {user.credits > 0 ? (
+                  <TouchableOpacity style={[styles.methodRow, styles.creditMethodRow]} onPress={handlePayWithCredit}>
+                    <Ionicons name="wallet-outline" size={16} color={colors.gold} />
+                    <Text style={styles.methodLabel}>Usar 1 crédito</Text>
+                    <Text style={styles.creditBalanceHint}>Tem {user.credits}</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity onPress={() => { setCheckoutOpen(false); navigation.navigate('Credits'); }}>
+                    <Text style={styles.buyCreditsLink}>Comprar créditos e poupar em futuras candidaturas</Text>
+                  </TouchableOpacity>
+                )}
                 {PAYMENT_METHODS.map((method) => (
                   <TouchableOpacity
                     key={method.id}
@@ -483,6 +521,9 @@ const styles = StyleSheet.create({
   },
   methodDot: { width: 14, height: 14, borderRadius: 999 },
   methodLabel: { flex: 1, fontSize: 15, fontWeight: '700', color: colors.text },
+  creditMethodRow: { backgroundColor: '#FFF8EC', borderColor: colors.gold },
+  creditBalanceHint: { fontSize: 12, color: colors.textMuted, fontWeight: '600', marginRight: spacing.xs },
+  buyCreditsLink: { fontSize: 13, color: colors.teal, fontWeight: '700', textAlign: 'center', marginBottom: spacing.md },
   backRow: { flexDirection: 'row', alignItems: 'center', gap: 2, marginBottom: spacing.md },
   backText: { fontSize: 13, color: colors.textMuted, fontWeight: '600' },
   modalInput: {

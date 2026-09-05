@@ -83,6 +83,18 @@ export default function ProfileScreen({ navigation }) {
         ) : null}
       </View>
 
+      <TouchableOpacity style={styles.creditsCard} onPress={() => navigation.navigate('Credits')}>
+        <Ionicons name="wallet-outline" size={22} color={colors.gold} />
+        <View style={{ flex: 1 }}>
+          <Text style={styles.creditsLabel}>Créditos</Text>
+          <Text style={styles.creditsValue}>
+            {user.credits || 0} {user.credits === 1 ? 'disponível' : 'disponíveis'}
+          </Text>
+        </View>
+        <Text style={styles.creditsBuy}>Comprar</Text>
+        <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+      </TouchableOpacity>
+
       <View style={styles.section}>
         {isEmployee ? (
           <>
@@ -149,6 +161,18 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
   },
   linkText: { fontSize: 13, color: colors.teal, fontWeight: '600' },
+  creditsCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.white,
+    marginTop: spacing.md,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+  },
+  creditsLabel: { fontSize: 11, color: colors.textMuted, textTransform: 'uppercase', fontWeight: '700' },
+  creditsValue: { fontSize: 15, color: colors.text, fontWeight: '700', marginTop: 2 },
+  creditsBuy: { fontSize: 13, color: colors.teal, fontWeight: '700' },
   section: {
     backgroundColor: colors.white,
     marginTop: spacing.md,

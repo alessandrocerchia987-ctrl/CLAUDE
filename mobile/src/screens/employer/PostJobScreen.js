@@ -22,6 +22,7 @@ import ChipSelect from '../../components/ChipSelect';
 import Button from '../../components/Button';
 import { api } from '../../api/client';
 import { pickImage } from '../../utils/pickImage';
+import { useAuth } from '../../context/AuthContext';
 import { colors, radius, spacing } from '../../theme/colors';
 import { AVAILABILITY_OPTIONS, JOB_LIFETIME_DAYS } from '../../constants';
 
@@ -56,6 +57,7 @@ const initialForm = {
 };
 
 export default function PostJobScreen({ navigation }) {
+  const { user, refreshUser } = useAuth();
   const [form, setForm] = useState(initialForm);
   const [photo, setPhoto] = useState(null);
   const [boost, setBoost] = useState(false);
@@ -143,7 +145,7 @@ export default function PostJobScreen({ navigation }) {
       Alert.alert('Número em falta', 'Introduza o número de telemóvel a usar para o pagamento.');
       return;
     }
-    if (!methodMatchesPhone(payMethod, payPhone)) {
+    if (payMethod.id !== 'credit' && !methodMatchesPhone(payMethod, payPhone)) {
       Alert.alert(
         'Número não corresponde',
         `Este número não parece ser um número ${payMethod.label}. Verifique o número ou escolha outro método.`
@@ -153,6 +155,7 @@ export default function PostJobScreen({ navigation }) {
     setPayState('charging');
     try {
       const formData = buildFormData();
+      if (payMethod.id === 'credit') formData.append('method', 'credit');
       formData.append('phone', payPhone.trim());
       const { paymentId, status } = await api.postForm('/payments/charge', formData);
 
@@ -164,6 +167,30 @@ export default function PostJobScreen({ navigation }) {
     } catch (err) {
       setPayState('idle');
       Alert.alert('Não foi possível iniciar o pagamento', err.message);
+    }
+  }
+
+  // Boost still needs a real 50 MZN charge even when paid with a credit
+  // (it's an optional add-on, not the core action the credit covers), so
+  // that case still needs a phone number — everything else completes
+  // instantly with no external payment at all.
+  async function handlePayWithCredit() {
+    if (boost) {
+      setPayMethod({ id: 'credit', label: 'Crédito' });
+      setCheckoutStep('phone');
+      return;
+    }
+    setPayState('charging');
+    try {
+      const formData = buildFormData();
+      formData.append('method', 'credit');
+      const { status } = await api.postForm('/payments/charge', formData);
+      if (status === 'success') {
+        await finishPost();
+      }
+    } catch (err) {
+      setPayState('idle');
+      Alert.alert('Não foi possível usar o crédito', err.message);
     }
   }
 
@@ -201,6 +228,7 @@ export default function PostJobScreen({ navigation }) {
     setForm(initialForm);
     setPhoto(null);
     setBoost(false);
+    refreshUser();
     Alert.alert(
       'Vaga publicada',
       `A sua vaga já está visível para os candidatos durante ${JOB_LIFETIME_DAYS} dias.`,
@@ -292,6 +320,19 @@ export default function PostJobScreen({ navigation }) {
               <>
                 <Text style={styles.modalTitle}>Como quer pagar?</Text>
                 <Text style={styles.amount}>{total} MZN</Text>
+                {user.credits > 0 ? (
+                  <TouchableOpacity style={[styles.methodRow, styles.creditMethodRow]} onPress={handlePayWithCredit}>
+                    <Ionicons name="wallet-outline" size={16} color={colors.gold} />
+                    <Text style={styles.methodLabel}>
+                      Usar 1 crédito{boost ? ` + ${JOB_BOOST_ADDON} MZN (destaque)` : ''}
+                    </Text>
+                    <Text style={styles.creditBalanceHint}>Tem {user.credits}</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity onPress={() => { setCheckoutOpen(false); navigation.navigate('Credits'); }}>
+                    <Text style={styles.buyCreditsLink}>Comprar créditos e poupar em futuras publicações</Text>
+                  </TouchableOpacity>
+                )}
                 {PAYMENT_METHODS.map((method) => (
                   <TouchableOpacity
                     key={method.id}
@@ -319,14 +360,22 @@ export default function PostJobScreen({ navigation }) {
                   <Text style={styles.backText}>Mudar método</Text>
                 </TouchableOpacity>
                 <View style={styles.modalTitleRow}>
-                  <View style={[styles.methodDot, { backgroundColor: payMethod.dotColor }]} />
-                  <Text style={styles.modalTitle}>{payMethod.label}</Text>
+                  {payMethod.id !== 'credit' ? (
+                    <View style={[styles.methodDot, { backgroundColor: payMethod.dotColor }]} />
+                  ) : null}
+                  <Text style={styles.modalTitle}>
+                    {payMethod.id === 'credit' ? 'Destaque — M-Pesa ou e-Mola' : payMethod.label}
+                  </Text>
                 </View>
-                <Text style={styles.amount}>{total} MZN</Text>
+                <Text style={styles.amount}>{payMethod.id === 'credit' ? `1 crédito + ${JOB_BOOST_ADDON} MZN` : `${total} MZN`}</Text>
                 <TextInput
                   value={payPhone}
                   onChangeText={setPayPhone}
-                  placeholder={`Número ${payMethod.label}, ex: ${payMethod.prefixes[0]}1234567`}
+                  placeholder={
+                    payMethod.id === 'credit'
+                      ? 'Número M-Pesa ou e-Mola, ex: 841234567'
+                      : `Número ${payMethod.label}, ex: ${payMethod.prefixes[0]}1234567`
+                  }
                   placeholderTextColor={colors.placeholder}
                   keyboardType="phone-pad"
                   returnKeyType="done"
@@ -398,6 +447,9 @@ const styles = StyleSheet.create({
   },
   methodDot: { width: 14, height: 14, borderRadius: 999 },
   methodLabel: { flex: 1, fontSize: 15, fontWeight: '700', color: colors.text },
+  creditMethodRow: { backgroundColor: '#FFF8EC', borderColor: colors.gold },
+  creditBalanceHint: { fontSize: 12, color: colors.textMuted, fontWeight: '600', marginRight: spacing.xs },
+  buyCreditsLink: { fontSize: 13, color: colors.teal, fontWeight: '700', textAlign: 'center', marginBottom: spacing.md },
   backRow: { flexDirection: 'row', alignItems: 'center', gap: 2, marginBottom: spacing.md },
   backText: { fontSize: 13, color: colors.textMuted, fontWeight: '600' },
   modalInput: {
