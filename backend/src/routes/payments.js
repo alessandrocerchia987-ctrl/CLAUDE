@@ -22,7 +22,29 @@ const TITLES = {
   unlock_contact: 'Desbloquear contacto — Emprego Já',
   post_job: 'Publicar vaga — Emprego Já',
   apply: 'Candidatura — Emprego Já',
+  buy_credits: 'Comprar créditos — Emprego Já',
 };
+
+// Bulk credit packages — 1 credit = 1 application (employee) or 1 job
+// posting (employer), bought upfront at a discount instead of paying per
+// action every time. Contact unlocking is intentionally never creditable —
+// it stays a direct 50 MZN payment regardless of credit balance.
+// Prices are fixed presets (not a per-credit formula) so the discount tiers
+// stay exact and predictable — see CREDIT_ACTION for which purpose each
+// account type's credits spend on.
+const CREDIT_PACKAGES = {
+  employee: [
+    { credits: 5, price: 225 },
+    { credits: 10, price: 400 },
+    { credits: 20, price: 700 },
+  ],
+  employer: [
+    { credits: 3, price: 270 },
+    { credits: 5, price: 425 },
+    { credits: 10, price: 700 },
+  ],
+};
+const CREDIT_ACTION = { employee: 'apply', employer: 'post_job' };
 
 function parsePayAmount(payText, payAmount) {
   if (payAmount !== undefined && payAmount !== null && payAmount !== '') {
@@ -79,7 +101,7 @@ async function completePayment(payment) {
   }
 
   if (payment.purpose === 'apply') {
-    const { jobId } = payload;
+    const { jobId, viaCredit } = payload;
     const job = db.prepare('SELECT * FROM jobs WHERE id = ?').get(jobId);
     if (!job) return;
 
@@ -93,6 +115,9 @@ async function completePayment(payment) {
         jobId,
         payment.user_id
       );
+      if (viaCredit) {
+        db.prepare('UPDATE users SET credits = credits - 1 WHERE id = ? AND credits >= 1').run(payment.user_id);
+      }
       const applicant = db.prepare('SELECT * FROM users WHERE id = ?').get(payment.user_id);
       await notifyUser(job.employer_id, {
         type: 'new_application',
@@ -105,8 +130,9 @@ async function completePayment(payment) {
   }
 
   if (payment.purpose === 'post_job') {
-    const { title, sector, location, payText, payAmount, availability, requirements, photoPath, boost } =
-      payload;
+    const {
+      title, sector, location, payText, payAmount, availability, requirements, photoPath, boost, viaCredit,
+    } = payload;
     const id = newId('job');
     db.prepare(
       `INSERT INTO jobs (
@@ -127,14 +153,110 @@ async function completePayment(payment) {
       photoUrl: photoPath || null,
       featured: boost ? 1 : 0,
     });
+    if (viaCredit) {
+      db.prepare('UPDATE users SET credits = credits - 1 WHERE id = ? AND credits >= 1').run(payment.user_id);
+    }
+    return;
+  }
+
+  if (payment.purpose === 'buy_credits') {
+    const { credits } = payload;
+    if (credits) {
+      db.prepare('UPDATE users SET credits = credits + ? WHERE id = ?').run(credits, payment.user_id);
+    }
   }
 }
 
+// Shared by /charge and /credits/buy — creates the payment record, then
+// either kicks off a direct M-Pesa/e-Mola STK push (needs a phone number)
+// or a card checkout link (opened in a browser). The actual gated action
+// only runs once the payment is confirmed — inline here if ZumboPay
+// answers 'success' immediately, otherwise later via the webhook below.
+async function startExternalCharge(req, res, { purpose, amount, payload, method, phone }) {
+  const isCard = method === 'card';
+  const id = newId('pay');
+  db.prepare(
+    'INSERT INTO payments (id, user_id, purpose, amount, payload) VALUES (?, ?, ?, ?, ?)'
+  ).run(id, req.user.id, purpose, amount, JSON.stringify(payload));
+
+  try {
+    if (isCard) {
+      const payment = await createHostedPayment({
+        amount,
+        title: TITLES[purpose] || 'Pagamento — Emprego Já',
+        sourceId: id,
+      });
+      db.prepare(
+        'UPDATE payments SET provider_reference = ?, updated_at = datetime(\'now\') WHERE id = ?'
+      ).run(payment?.reference || null, id);
+
+      return res.status(201).json({ paymentId: id, status: 'pending', checkoutUrl: payment?.checkout_url });
+    }
+
+    const msisdn = `258${String(phone).replace(/\D/g, '').slice(-9)}`;
+    const charge = await createCharge({
+      amount,
+      msisdn,
+      customerName: req.user.name,
+      sourceId: id,
+    });
+
+    const reference = charge?.reference || charge?.code || null;
+    db.prepare('UPDATE payments SET provider_reference = ?, updated_at = datetime(\'now\') WHERE id = ?').run(
+      reference,
+      id
+    );
+
+    if (charge?.status === 'success') {
+      db.prepare("UPDATE payments SET status = 'success' WHERE id = ?").run(id);
+      await completePayment(db.prepare('SELECT * FROM payments WHERE id = ?').get(id));
+    }
+
+    res.status(201).json({ paymentId: id, status: charge?.status || 'pending' });
+  } catch (err) {
+    db.prepare("UPDATE payments SET status = 'failed', updated_at = datetime('now') WHERE id = ?").run(id);
+    res.status(502).json({ error: err.message });
+  }
+}
+
+// Spends 1 credit on 'apply' or 'post_job' instead of a direct payment.
+// post_job's boost add-on stays a real charge even when paid with a
+// credit — it's an optional extra, not the core action the credit covers.
+async function handleCreditSpend(req, res, purpose, payload) {
+  const userRow = db.prepare('SELECT credits FROM users WHERE id = ?').get(req.user.id);
+  if (!userRow || userRow.credits < 1) {
+    return res.status(400).json({ error: 'Não tem créditos suficientes.' });
+  }
+
+  if (purpose === 'post_job' && payload.boost) {
+    const { phone } = req.body;
+    if (!phone || !String(phone).trim()) {
+      return res.status(400).json({ error: 'Número de telefone é obrigatório para o destaque.' });
+    }
+    return startExternalCharge(req, res, {
+      purpose: 'post_job',
+      amount: JOB_BOOST_ADDON,
+      payload: { ...payload, viaCredit: true },
+      method: 'mpesa',
+      phone,
+    });
+  }
+
+  const id = newId('pay');
+  db.prepare(
+    "INSERT INTO payments (id, user_id, purpose, amount, payload, status) VALUES (?, ?, ?, 0, ?, 'success')"
+  ).run(id, req.user.id, purpose, JSON.stringify({ ...payload, viaCredit: true }));
+  await completePayment(db.prepare('SELECT * FROM payments WHERE id = ?').get(id));
+  res.status(201).json({ paymentId: id, status: 'success' });
+}
+
 // Starts a payment for one of the paid actions — either a direct
-// M-Pesa/e-Mola STK push (method 'mpesa'/'emola', needs a phone number) or
-// a card checkout link (method 'card', opened in a browser). Nothing is
-// created yet — the actual action only happens once the webhook confirms
-// the payment succeeded (see POST /webhook below).
+// M-Pesa/e-Mola STK push (method 'mpesa'/'emola', needs a phone number),
+// a card checkout link (method 'card', opened in a browser), or spending
+// a pre-bought credit (method 'credit', apply/post_job only — never
+// unlock_contact). Nothing is created yet for the external-payment paths —
+// the actual action only happens once the webhook confirms the payment
+// succeeded (see POST /webhook below).
 // post_job takes an optional photo, so this route accepts multipart form
 // data for it (multer no-ops for plain JSON requests from the other
 // purposes, so both work fine through the same route).
@@ -159,8 +281,13 @@ router.post('/charge', requireAuth, upload.single('photo'), async (req, res) => 
     return res.status(400).json({ error: 'Finalidade de pagamento inválida.' });
   }
 
+  const isCredit = method === 'credit';
+  if (isCredit && purpose === 'unlock_contact') {
+    return res.status(400).json({ error: 'Desbloquear um contacto não pode ser pago com créditos.' });
+  }
+
   const isCard = method === 'card';
-  if (!isCard && (!phone || !String(phone).trim())) {
+  if (!isCard && !isCredit && (!phone || !String(phone).trim())) {
     return res.status(400).json({ error: 'Número de telefone é obrigatório.' });
   }
 
@@ -215,49 +342,46 @@ router.post('/charge', requireAuth, upload.single('photo'), async (req, res) => 
     payload.photoPath = relativeUploadPath(req.file.filename);
   }
 
-  const id = newId('pay');
-  db.prepare(
-    'INSERT INTO payments (id, user_id, purpose, amount, payload) VALUES (?, ?, ?, ?, ?)'
-  ).run(id, req.user.id, purpose, amount, JSON.stringify(payload));
-
-  try {
-    if (isCard) {
-      const payment = await createHostedPayment({
-        amount,
-        title: TITLES[purpose] || 'Pagamento — Emprego Já',
-        sourceId: id,
-      });
-      db.prepare(
-        'UPDATE payments SET provider_reference = ?, updated_at = datetime(\'now\') WHERE id = ?'
-      ).run(payment?.reference || null, id);
-
-      return res.status(201).json({ paymentId: id, status: 'pending', checkoutUrl: payment?.checkout_url });
-    }
-
-    const msisdn = `258${String(phone).replace(/\D/g, '').slice(-9)}`;
-    const charge = await createCharge({
-      amount,
-      msisdn,
-      customerName: req.user.name,
-      sourceId: id,
-    });
-
-    const reference = charge?.reference || charge?.code || null;
-    db.prepare('UPDATE payments SET provider_reference = ?, updated_at = datetime(\'now\') WHERE id = ?').run(
-      reference,
-      id
-    );
-
-    if (charge?.status === 'success') {
-      db.prepare("UPDATE payments SET status = 'success' WHERE id = ?").run(id);
-      await completePayment({ ...db.prepare('SELECT * FROM payments WHERE id = ?').get(id) });
-    }
-
-    res.status(201).json({ paymentId: id, status: charge?.status || 'pending' });
-  } catch (err) {
-    db.prepare("UPDATE payments SET status = 'failed', updated_at = datetime('now') WHERE id = ?").run(id);
-    res.status(502).json({ error: err.message });
+  if (isCredit) {
+    return handleCreditSpend(req, res, purpose, payload);
   }
+
+  return startExternalCharge(req, res, { purpose, amount, payload, method, phone });
+});
+
+// Returns the credit packages for the current account's type, and which
+// action (apply/post_job) its credits spend on — kept server-side so the
+// app never has to hardcode prices that could drift out of sync.
+router.get('/credits/packages', requireAuth, (req, res) => {
+  const packages = CREDIT_PACKAGES[req.user.account_type];
+  if (!packages) return res.status(403).json({ error: 'Tipo de conta inválido.' });
+  res.json({ packages, action: CREDIT_ACTION[req.user.account_type], balance: req.user.credits || 0 });
+});
+
+// Buys a bulk credit package — same charge mechanics as /charge (direct
+// M-Pesa/e-Mola or card), just for a fixed 'buy_credits' amount instead of
+// a gated action. Credits are added once the payment succeeds, in
+// completePayment's 'buy_credits' case.
+router.post('/credits/buy', requireAuth, async (req, res) => {
+  const { credits, method, phone } = req.body;
+  const packages = CREDIT_PACKAGES[req.user.account_type];
+  if (!packages) return res.status(403).json({ error: 'Tipo de conta inválido.' });
+
+  const pkg = packages.find((p) => p.credits === Number(credits));
+  if (!pkg) return res.status(400).json({ error: 'Pacote de créditos inválido.' });
+
+  const isCard = method === 'card';
+  if (!isCard && (!phone || !String(phone).trim())) {
+    return res.status(400).json({ error: 'Número de telefone é obrigatório.' });
+  }
+
+  return startExternalCharge(req, res, {
+    purpose: 'buy_credits',
+    amount: pkg.price,
+    payload: { credits: pkg.credits },
+    method,
+    phone,
+  });
 });
 
 // Lets the app poll while waiting for the customer to enter their PIN.

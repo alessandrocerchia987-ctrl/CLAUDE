@@ -35,6 +35,7 @@ function serializeUser(user, { includePhone = false } = {}) {
     lastActiveAt: user.last_active_at,
     phone: includePhone ? user.phone : null,
     phoneLocked: !includePhone,
+    credits: user.credits || 0,
   };
 
   if (user.account_type === 'employee') {

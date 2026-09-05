@@ -190,4 +190,13 @@ try {
 }
 db.exec('UPDATE users SET last_active_at = created_at WHERE last_active_at IS NULL');
 
+// Migration for the credits feature — a pre-paid balance of actions
+// (1 credit = 1 application for employees, 1 job posting for employers)
+// bought at a bulk discount instead of paying per action every time.
+try {
+  db.exec('ALTER TABLE users ADD COLUMN credits INTEGER NOT NULL DEFAULT 0');
+} catch {
+  // column already exists
+}
+
 module.exports = db;
