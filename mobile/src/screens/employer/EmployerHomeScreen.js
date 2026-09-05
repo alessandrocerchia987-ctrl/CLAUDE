@@ -5,6 +5,7 @@ import ScreenHeader from '../../components/ScreenHeader';
 import StoriesBar from '../../components/StoriesBar';
 import JobCard from '../../components/JobCard';
 import CandidateCard from '../../components/CandidateCard';
+import CreditsPill from '../../components/CreditsPill';
 import { useAuth } from '../../context/AuthContext';
 import { useStories } from '../../context/StoriesContext';
 import { api } from '../../api/client';
@@ -50,7 +51,7 @@ export default function EmployerHomeScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title="Emprego Já" />
+      <ScreenHeader title="Emprego Já" right={<CreditsPill credits={user.credits} />} />
       <StoriesBar
         stories={stories}
         currentUser={user}

@@ -36,7 +36,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   side: {
-    width: 40,
+    minWidth: 40,
   },
   sideRight: {
     alignItems: 'flex-end',
